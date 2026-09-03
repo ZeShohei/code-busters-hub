@@ -295,3 +295,26 @@ Prefer readable, maintainable and straightforward code.
 Choose the simplest solution that satisfies the current requirement.
 
 Introduce abstractions when real repetition or complexity demonstrates the need for them.
+
+### Agent Git Restrictions
+
+Coding agents may modify files in the working tree, but must not create commits or push changes.
+
+The developer is responsible for:
+
+- reviewing all changes
+- staging files
+- creating commits
+- writing the final commit message
+- pushing changes to the remote repository
+
+Agents may use read-only Git commands such as:
+
+```text
+git status
+git diff
+git diff --stat
+git log
+```
+
+Agents should leave all implemented changes uncommitted for manual review.
