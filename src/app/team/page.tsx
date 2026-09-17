@@ -9,6 +9,8 @@ import { resolveRotation } from "@/features/rotations/utils";
 import { TeamList } from "@/features/team/TeamList";
 import { teamMembers } from "@/features/team/mockData";
 import { getCurrentRotation } from "@/utils/date";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
+import { PageHeader } from "@/components/PageHeader/PageHeader";
 
 import styles from "./page.module.css";
 
@@ -27,16 +29,23 @@ export default function TeamPage() {
 
   return (
     <section className={styles.page}>
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Teamorganisation</p>
+      <Breadcrumbs
+        items={[
+          {
+            label: "Übersicht",
+            href: "/",
+          },
+          {
+            label: "Team",
+          },
+        ]}
+      />
 
-        <h1>Team</h1>
-
-        <p className={styles.description}>
-          Übersicht über Teammitglieder, Abwesenheiten und
-          Rotationsverantwortlichkeiten.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Teamorganisation"
+        title="Team"
+        description="Übersicht über Teammitglieder, Abwesenheiten und Rotationsverantwortlichkeiten."
+      />
 
       <TeamList
         teamMembers={teamMembers}

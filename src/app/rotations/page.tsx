@@ -5,9 +5,10 @@ import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import { RotationsOverview } from "@/features/rotations/RotationsOverview";
 import { teamMembers } from "@/features/team/mockData";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
+import { PageHeader } from "@/components/PageHeader/PageHeader";
 
 import styles from "./page.module.css";
-import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 
 export default function RotationsPage() {
   return (
@@ -23,15 +24,11 @@ export default function RotationsPage() {
           },
         ]}
       />
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Teamorganisation</p>
-
-        <h1>Rotationen</h1>
-
-        <p className={styles.description}>
-          Übersicht über Dispatcher- und Deployment-Verantwortlichkeiten.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Teamorganisation"
+        title="Rotationen"
+        description="Übersicht über Dispatcher- und Deployment-Verantwortlichkeiten."
+      />
 
       <Suspense fallback={<p>Rotationen werden geladen …</p>}>
         <RotationsOverview

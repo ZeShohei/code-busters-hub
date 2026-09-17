@@ -3,9 +3,10 @@ import { Suspense } from "react";
 import { absences, substitutions } from "@/features/absences/mockData";
 import { AbsenceList } from "@/features/absences/AbsenceList";
 import { teamMembers } from "@/features/team/mockData";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
+import { PageHeader } from "@/components/PageHeader/PageHeader";
 
 import styles from "./page.module.css";
-import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 
 export default function AbsencesPage() {
   return (
@@ -21,16 +22,11 @@ export default function AbsencesPage() {
           },
         ]}
       />
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Teamorganisation</p>
-
-        <h1>Abwesenheiten</h1>
-
-        <p className={styles.description}>
-          Übersicht über aktuelle, kommende und vergangene Abwesenheiten
-          inklusive Vertretungen.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Teamorganisation"
+        title="Abwesenheiten"
+        description="Übersicht über aktuelle, kommende und vergangene Abwesenheiten inklusive Vertretungen."
+      />
 
       <Suspense fallback={<p>Abwesenheiten werden geladen …</p>}>
         <AbsenceList
