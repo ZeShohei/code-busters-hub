@@ -1,10 +1,15 @@
+import { deploymentRotationConfig } from "@/features/rotations/config";
 import { generateRotations } from "@/features/rotations/utils";
 import { teamMembers } from "@/features/team/mockData";
 
+const deploymentTeamMembers = teamMembers.filter((teamMember) =>
+  deploymentRotationConfig.participantTeamMemberIds.includes(teamMember.id),
+);
+
 export const deploymentRotations = generateRotations({
-  teamMembers,
-  startDate: "2026-08-31",
-  numberOfWeeks: 12,
+  teamMembers: deploymentTeamMembers,
+  startDate: deploymentRotationConfig.startDate,
+  numberOfWeeks: deploymentRotationConfig.numberOfWeeks,
   type: "deployment",
-  startIndex: 1,
+  startIndex: deploymentRotationConfig.startIndex,
 });
