@@ -55,11 +55,7 @@ export const isDateInRange = (
   endDate: string,
   date = new Date(),
 ) => {
-  const currentDate = normalizeDate(date);
-  const start = normalizeDate(parseDate(startDate));
-  const end = normalizeDate(parseDate(endDate));
-
-  return currentDate >= start && currentDate <= end;
+  return getDateRangeStatus(startDate, endDate, date) === "current";
 };
 
 export const isDateAfter = (
@@ -137,4 +133,41 @@ export const getCalendarWeek = (dateString: string) => {
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
 
   return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+};
+
+export type DateRangeStatus = "current" | "upcoming" | "past";
+
+export const getDateRangeStatus = (
+  startDate: string,
+  endDate: string,
+  comparisonDate = new Date(),
+): DateRangeStatus => {
+  const currentDate = normalizeDate(comparisonDate);
+
+  const start = normalizeDate(parseDate(startDate));
+
+  const end = normalizeDate(parseDate(endDate));
+
+  if (currentDate >= start && currentDate <= end) {
+    return "current";
+  }
+
+  if (currentDate < start) {
+    return "upcoming";
+  }
+
+  return "past";
+};
+
+export const getDateRangeStatusLabel = (status: DateRangeStatus) => {
+  switch (status) {
+    case "current":
+      return "Aktuell";
+
+    case "upcoming":
+      return "Kommend";
+
+    case "past":
+      return "Vergangen";
+  }
 };

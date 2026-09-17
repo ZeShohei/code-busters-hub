@@ -9,6 +9,8 @@ import type { Absence, RotationAssignment } from "@/types/team";
 import {
   formatDate,
   getCalendarWeek,
+  getDateRangeStatus,
+  getDateRangeStatusLabel,
   isDateInRange,
   parseDate,
 } from "@/utils/date";
@@ -22,35 +24,6 @@ interface TeamMemberPageProps {
   }>;
 }
 
-type RotationStatus = "current" | "upcoming" | "past";
-
-const getRotationStatus = (rotation: RotationAssignment): RotationStatus => {
-  const today = new Date();
-
-  if (isDateInRange(rotation.startDate, rotation.endDate, today)) {
-    return "current";
-  }
-
-  if (parseDate(rotation.startDate) > today) {
-    return "upcoming";
-  }
-
-  return "past";
-};
-
-const getRotationStatusLabel = (status: RotationStatus) => {
-  switch (status) {
-    case "current":
-      return "Aktuell";
-
-    case "upcoming":
-      return "Kommend";
-
-    case "past":
-      return "Vergangen";
-  }
-};
-
 const sortRotationsByStartDate = (rotations: RotationAssignment[]) => {
   return [...rotations].sort(
     (first, second) =>
@@ -63,48 +36,26 @@ const getRelevantRotations = (rotations: RotationAssignment[]) => {
   const sorted = sortRotationsByStartDate(rotations);
 
   const current = sorted.filter(
-    (rotation) => getRotationStatus(rotation) === "current",
+    (rotation) =>
+      getDateRangeStatus(rotation.startDate, rotation.endDate) === "current",
   );
 
   const upcoming = sorted
-    .filter((rotation) => getRotationStatus(rotation) === "upcoming")
+    .filter(
+      (rotation) =>
+        getDateRangeStatus(rotation.startDate, rotation.endDate) === "upcoming",
+    )
     .slice(0, 3);
 
   const past = sorted
-    .filter((rotation) => getRotationStatus(rotation) === "past")
+    .filter(
+      (rotation) =>
+        getDateRangeStatus(rotation.startDate, rotation.endDate) === "past",
+    )
     .slice(-3)
     .reverse();
 
   return [...current, ...upcoming, ...past];
-};
-
-type AbsenceStatus = "current" | "upcoming" | "past";
-
-const getAbsenceStatus = (absence: Absence): AbsenceStatus => {
-  const today = new Date();
-
-  if (isDateInRange(absence.startDate, absence.endDate, today)) {
-    return "current";
-  }
-
-  if (parseDate(absence.startDate) > today) {
-    return "upcoming";
-  }
-
-  return "past";
-};
-
-const getAbsenceStatusLabel = (status: AbsenceStatus) => {
-  switch (status) {
-    case "current":
-      return "Aktuell";
-
-    case "upcoming":
-      return "Kommend";
-
-    case "past":
-      return "Vergangen";
-  }
 };
 
 const sortAbsencesByStartDate = (absences: Absence[]) => {
@@ -126,7 +77,7 @@ const renderRotationList = (
   return (
     <div className={styles.list}>
       {rotations.map((rotation) => {
-        const status = getRotationStatus(rotation);
+        const status = getDateRangeStatus(rotation.startDate, rotation.endDate);
 
         return (
           <article key={rotation.id} className={styles.card}>
@@ -157,7 +108,7 @@ const renderRotationList = (
                       : styles.rotationStatusPast
                 }`}
               >
-                {getRotationStatusLabel(status)}
+                {getDateRangeStatusLabel(status)}
               </strong>
             </div>
           </article>
@@ -260,7 +211,10 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
         ) : (
           <div className={styles.list}>
             {memberAbsences.map((absence) => {
-              const status = getAbsenceStatus(absence);
+              const status = getDateRangeStatus(
+                absence.startDate,
+                absence.endDate,
+              );
 
               const substitution = substitutions.find(
                 (item) =>
@@ -304,7 +258,7 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
                             : styles.absenceStatusPast
                       }`}
                     >
-                      {getAbsenceStatusLabel(status)}
+                      {getDateRangeStatusLabel(status)}
                     </strong>
                   </div>
 

@@ -5,7 +5,11 @@ import { useMemo, useState } from "react";
 import type { Absence, Substitution, TeamMember } from "@/types/team";
 
 import { getTeamMemberName } from "@/features/team/utils";
-import { formatDate, isDateInRange, parseDate } from "@/utils/date";
+import {
+  formatDate,
+  getDateRangeStatus,
+  getDateRangeStatusLabel,
+} from "@/utils/date";
 
 import styles from "./AbsenceList.module.css";
 
@@ -16,33 +20,6 @@ interface AbsenceListProps {
   substitutions: Substitution[];
   teamMembers: TeamMember[];
 }
-
-const getAbsenceStatus = (absence: Absence) => {
-  const today = new Date();
-
-  if (isDateInRange(absence.startDate, absence.endDate, today)) {
-    return "current";
-  }
-
-  if (parseDate(absence.startDate) > today) {
-    return "upcoming";
-  }
-
-  return "past";
-};
-
-const getAbsenceStatusLabel = (status: "current" | "upcoming" | "past") => {
-  switch (status) {
-    case "current":
-      return "Aktuell";
-
-    case "upcoming":
-      return "Kommend";
-
-    case "past":
-      return "Vergangen";
-  }
-};
 
 const getAbsenceTypeLabel = (type: Absence["type"]) => {
   switch (type) {
@@ -71,7 +48,8 @@ export const AbsenceList = ({
 
     return absences.filter((absence) => {
       const matchesStatus =
-        filter === "all" || getAbsenceStatus(absence) === filter;
+        filter === "all" ||
+        getDateRangeStatus(absence.startDate, absence.endDate) === filter;
 
       if (!matchesStatus) {
         return false;
@@ -162,7 +140,10 @@ export const AbsenceList = ({
       ) : (
         <div className={styles.list}>
           {filteredAbsences.map((absence) => {
-            const status = getAbsenceStatus(absence);
+            const status = getDateRangeStatus(
+              absence.startDate,
+              absence.endDate,
+            );
 
             const substitution = substitutions.find(
               (item) =>
@@ -215,7 +196,7 @@ export const AbsenceList = ({
                           : styles.statusPast
                     }`}
                   >
-                    {getAbsenceStatusLabel(status)}
+                    {getDateRangeStatusLabel(status)}
                   </strong>
                 </div>
               </article>

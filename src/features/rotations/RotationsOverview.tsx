@@ -8,7 +8,7 @@ import type {
   Substitution,
   TeamMember,
 } from "@/types/team";
-import { isDateInRange, parseDate } from "@/utils/date";
+import { getDateRangeStatus } from "@/utils/date";
 
 import { RotationList } from "./RotationList";
 
@@ -25,22 +25,6 @@ interface RotationsOverviewProps {
   substitutions: Substitution[];
   teamMembers: TeamMember[];
 }
-
-const getRotationStatus = (
-  rotation: RotationAssignment,
-): Exclude<RotationStatusFilter, "all"> => {
-  const today = new Date();
-
-  if (isDateInRange(rotation.startDate, rotation.endDate, today)) {
-    return "current";
-  }
-
-  if (parseDate(rotation.startDate) > today) {
-    return "upcoming";
-  }
-
-  return "past";
-};
 
 export const RotationsOverview = ({
   dispatcherRotations,
@@ -60,7 +44,9 @@ export const RotationsOverview = ({
 
     return dispatcherRotations.filter(
       (rotation) =>
-        statusFilter === "all" || getRotationStatus(rotation) === statusFilter,
+        statusFilter === "all" ||
+        getDateRangeStatus(rotation.startDate, rotation.endDate) ===
+          statusFilter,
     );
   }, [dispatcherRotations, statusFilter, typeFilter]);
 
@@ -71,7 +57,9 @@ export const RotationsOverview = ({
 
     return deploymentRotations.filter(
       (rotation) =>
-        statusFilter === "all" || getRotationStatus(rotation) === statusFilter,
+        statusFilter === "all" ||
+        getDateRangeStatus(rotation.startDate, rotation.endDate) ===
+          statusFilter,
     );
   }, [deploymentRotations, statusFilter, typeFilter]);
 
