@@ -10,6 +10,6 @@ export const dispatcherRotations = generateRotations({
   teamMembers: dispatcherTeamMembers,
   startDate: dispatcherRotationConfig.startDate,
   numberOfWeeks: dispatcherRotationConfig.numberOfWeeks,
-  type: "dispatcher",
+  type: dispatcherRotationConfig.type,
   startIndex: dispatcherRotationConfig.startIndex,
 });

@@ -10,6 +10,6 @@ export const deploymentRotations = generateRotations({
   teamMembers: deploymentTeamMembers,
   startDate: deploymentRotationConfig.startDate,
   numberOfWeeks: deploymentRotationConfig.numberOfWeeks,
-  type: "deployment",
+  type: deploymentRotationConfig.type,
   startIndex: deploymentRotationConfig.startIndex,
 });

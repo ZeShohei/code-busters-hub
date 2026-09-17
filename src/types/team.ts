@@ -29,3 +29,11 @@ export interface RotationAssignment {
   endDate: string;
   type: "deployment" | "dispatcher";
 }
+
+export interface RotationConfig {
+  participantTeamMemberIds: string[];
+  startDate: string;
+  numberOfWeeks: number;
+  startIndex: number;
+  type: RotationAssignment["type"];
+}
