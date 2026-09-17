@@ -1,6 +1,7 @@
 import type {
   Absence,
   RotationAssignment,
+  RotationResolution,
   Substitution,
   TeamMember,
 } from "@/types/team";
@@ -60,6 +61,38 @@ export const getEffectiveRotationTeamMemberId = (
   const substitution = getRotationSubstitution(rotation, substitutions);
 
   return substitution?.substituteTeamMemberId ?? rotation.teamMemberId;
+};
+
+export const resolveRotation = (
+  rotation: RotationAssignment,
+  absences: Absence[],
+  substitutions: Substitution[],
+): RotationResolution => {
+  const absence = getRotationAbsence(rotation, absences);
+
+  if (!absence) {
+    return {
+      status: "regular",
+      assignedTeamMemberId: rotation.teamMemberId,
+      effectiveTeamMemberId: rotation.teamMemberId,
+    };
+  }
+
+  const substitution = getRotationSubstitution(rotation, substitutions);
+
+  if (!substitution) {
+    return {
+      status: "uncovered",
+      assignedTeamMemberId: rotation.teamMemberId,
+      effectiveTeamMemberId: rotation.teamMemberId,
+    };
+  }
+
+  return {
+    status: "substitution",
+    assignedTeamMemberId: rotation.teamMemberId,
+    effectiveTeamMemberId: substitution.substituteTeamMemberId,
+  };
 };
 
 const parseDate = (dateString: string) => {

@@ -9,7 +9,7 @@ import type {
   TeamMember,
 } from "@/types/team";
 
-import { getEffectiveRotationTeamMemberId } from "@/features/rotations/utils";
+import { resolveRotation } from "@/features/rotations/utils";
 import { getTeamMemberName } from "@/features/team/utils";
 
 import {
@@ -57,20 +57,12 @@ export const WeekOverview = ({
 
   const currentDeployment = getCurrentRotation(deploymentRotations, monday);
 
-  const effectiveDispatcherTeamMemberId = currentDispatcher
-    ? getEffectiveRotationTeamMemberId(
-        currentDispatcher,
-        absences,
-        substitutions,
-      )
+  const dispatcherResolution = currentDispatcher
+    ? resolveRotation(currentDispatcher, absences, substitutions)
     : undefined;
 
-  const effectiveDeploymentTeamMemberId = currentDeployment
-    ? getEffectiveRotationTeamMemberId(
-        currentDeployment,
-        absences,
-        substitutions,
-      )
+  const deploymentResolution = currentDeployment
+    ? resolveRotation(currentDeployment, absences, substitutions)
     : undefined;
 
   const handlePreviousWeek = () => {
@@ -131,20 +123,66 @@ export const WeekOverview = ({
           <span>Dispatcher</span>
 
           <strong>
-            {effectiveDispatcherTeamMemberId
-              ? getTeamMemberName(effectiveDispatcherTeamMemberId, teamMembers)
+            {dispatcherResolution
+              ? getTeamMemberName(
+                  dispatcherResolution.effectiveTeamMemberId,
+                  teamMembers,
+                )
               : "Nicht eingeteilt"}
           </strong>
+
+          {dispatcherResolution?.status === "regular" && (
+            <span className={styles.regular}>Regulär eingeteilt</span>
+          )}
+
+          {dispatcherResolution?.status === "substitution" && (
+            <span className={styles.substitution}>
+              Vertretung für{" "}
+              {getTeamMemberName(
+                dispatcherResolution.assignedTeamMemberId,
+                teamMembers,
+              )}
+            </span>
+          )}
+
+          {dispatcherResolution?.status === "uncovered" && (
+            <span className={styles.warning}>
+              Abwesend – keine Vertretung eingetragen
+            </span>
+          )}
         </article>
 
         <article className={styles.rotation}>
           <span>Deployment</span>
 
           <strong>
-            {effectiveDeploymentTeamMemberId
-              ? getTeamMemberName(effectiveDeploymentTeamMemberId, teamMembers)
+            {deploymentResolution
+              ? getTeamMemberName(
+                  deploymentResolution.effectiveTeamMemberId,
+                  teamMembers,
+                )
               : "Nicht eingeteilt"}
           </strong>
+
+          {deploymentResolution?.status === "regular" && (
+            <span className={styles.regular}>Regulär eingeteilt</span>
+          )}
+
+          {deploymentResolution?.status === "substitution" && (
+            <span className={styles.substitution}>
+              Vertretung für{" "}
+              {getTeamMemberName(
+                deploymentResolution.assignedTeamMemberId,
+                teamMembers,
+              )}
+            </span>
+          )}
+
+          {deploymentResolution?.status === "uncovered" && (
+            <span className={styles.warning}>
+              Abwesend – keine Vertretung eingetragen
+            </span>
+          )}
         </article>
       </div>
 

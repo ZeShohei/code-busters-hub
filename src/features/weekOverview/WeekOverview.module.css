@@ -190,6 +190,24 @@
     font-size: 0.75rem;
 }
 
+.regular {
+    color: #166534 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.substitution {
+    color: #1d4ed8 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.warning {
+    color: #b45309 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
 @media (max-width: 64rem) {
     .header {
         align-items: flex-start;

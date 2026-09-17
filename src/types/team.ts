@@ -37,3 +37,11 @@ export interface RotationConfig {
   startIndex: number;
   type: RotationAssignment["type"];
 }
+
+export type RotationStatus = "regular" | "substitution" | "uncovered";
+
+export interface RotationResolution {
+  status: RotationStatus;
+  assignedTeamMemberId: string;
+  effectiveTeamMemberId: string;
+}
