@@ -10,33 +10,13 @@ import {
 } from "@/features/rotations/utils";
 import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
-import type { RotationAssignment } from "@/types/team";
+import { WeekOverview } from "@/features/weekOverview/WeekOverview";
+import {
+  getCurrentRotation,
+  isDateInRange,
+} from "@/features/weekOverview/utils";
 
 import styles from "./page.module.css";
-
-const isDateInRange = (
-  startDate: string,
-  endDate: string,
-  date = new Date(),
-) => {
-  const currentDate = new Date(date);
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  currentDate.setHours(0, 0, 0, 0);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  return currentDate >= start && currentDate <= end;
-};
-
-const getCurrentRotation = (
-  rotations: RotationAssignment[],
-): RotationAssignment | undefined => {
-  return rotations.find((rotation) =>
-    isDateInRange(rotation.startDate, rotation.endDate),
-  );
-};
 
 export default function Home() {
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
@@ -169,6 +149,14 @@ export default function Home() {
           </p>
         </article>
       </div>
+
+      <WeekOverview
+        absences={absences}
+        substitutions={substitutions}
+        teamMembers={teamMembers}
+        dispatcherRotations={dispatcherRotations}
+        deploymentRotations={deploymentRotations}
+      />
 
       <section className={styles.section}>
         <div className={styles.sectionHeader}>

@@ -1,0 +1,220 @@
+.weekOverview {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.header > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.header h2 {
+    font-size: 1.25rem;
+}
+
+.header p {
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.navigation {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.navigationButton {
+    min-height: 2.5rem;
+
+    padding: 0.5rem 0.875rem;
+
+    border: 1px solid #d4d4d4;
+    border-radius: 0.5rem;
+
+    color: #171717;
+    background: #fff;
+
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+            background 0.2s ease,
+            border-color 0.2s ease;
+}
+
+.navigationButton:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: #a3a3a3;
+}
+
+.navigationButton:focus-visible {
+    outline: 0.125rem solid #2563eb;
+    outline-offset: 0.125rem;
+}
+
+.navigationButton:disabled {
+    color: #a3a3a3;
+    background: #f5f5f5;
+
+    cursor: default;
+}
+
+.rotationOverview {
+    display: grid;
+    grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.rotation {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+
+    padding: 1rem 1.25rem;
+
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+
+    background: #fff;
+}
+
+.rotation span {
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.rotation strong {
+    font-size: 1rem;
+}
+
+.days {
+    display: grid;
+    grid-template-columns:
+    repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.day {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+    min-height: 10rem;
+
+    overflow: hidden;
+
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+
+    background: #fff;
+}
+
+.today {
+    border-color: #2563eb;
+}
+
+.dayHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+
+    padding: 0.75rem 1rem;
+
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.today .dayHeader {
+    background: #eff6ff;
+}
+
+.dayHeader strong {
+    text-transform: capitalize;
+}
+
+.dayHeader span {
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.dayContent {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    padding: 0.75rem;
+}
+
+.noAbsences {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.absence {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+
+    padding: 0.625rem 0.75rem;
+
+    border-radius: 0.5rem;
+
+    background: #f5f5f5;
+}
+
+.absence strong {
+    overflow: hidden;
+
+    font-size: 0.8125rem;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.absence span {
+    color: #666;
+    font-size: 0.75rem;
+}
+
+@media (max-width: 64rem) {
+    .header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .days {
+        grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 48rem) {
+    .navigation {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .navigationButton {
+        flex: 1;
+        min-width: 8rem;
+    }
+
+    .rotationOverview,
+    .days {
+        grid-template-columns: 1fr;
+    }
+}
