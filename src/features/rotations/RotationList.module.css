@@ -1,0 +1,103 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.header h2 {
+    font-size: 1.25rem;
+}
+
+.header p {
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.card {
+    display: grid;
+    grid-template-columns:
+    5rem
+    minmax(12rem, 1fr)
+    auto;
+
+    align-items: center;
+    gap: 2rem;
+
+    padding: 1.25rem;
+
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+
+    background: #fff;
+}
+
+.cardSubstitution {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.cardWarning {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.week,
+.person,
+.period {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.week > span,
+.person > span:first-child,
+.period > span {
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.week strong {
+    font-size: 1.25rem;
+}
+
+.person strong,
+.period strong {
+    font-size: 0.875rem;
+}
+
+.statusRegular {
+    color: #166534 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.statusSubstitution {
+    color: #1d4ed8 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.statusWarning {
+    color: #b45309 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+@media (max-width: 48rem) {
+    .card {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
