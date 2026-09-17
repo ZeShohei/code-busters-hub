@@ -1,0 +1,42 @@
+.appShell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+}
+
+.sidebar {
+    padding: 2rem;
+    border-right: 1px solid #e5e5e5;
+}
+
+.logo {
+    margin-bottom: 2rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.content {
+    padding: 2rem;
+}
+
+@media (max-width: 48rem) {
+    .appShell {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid #e5e5e5;
+    }
+
+    .navigation {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
