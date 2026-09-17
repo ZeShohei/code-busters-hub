@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
 import type { Absence, Substitution, TeamMember } from "@/types/team";
 
@@ -21,6 +22,15 @@ interface AbsenceListProps {
   teamMembers: TeamMember[];
 }
 
+const isAbsenceFilter = (value: string | null): value is AbsenceFilter => {
+  return (
+    value === "all" ||
+    value === "current" ||
+    value === "upcoming" ||
+    value === "past"
+  );
+};
+
 const getAbsenceTypeLabel = (type: Absence["type"]) => {
   switch (type) {
     case "vacation":
@@ -39,9 +49,48 @@ export const AbsenceList = ({
   substitutions,
   teamMembers,
 }: AbsenceListProps) => {
-  const [filter, setFilter] = useState<AbsenceFilter>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const statusParam = searchParams.get("status");
+
+  const filter: AbsenceFilter = isAbsenceFilter(statusParam)
+    ? statusParam
+    : "all";
+
+  const searchTerm = searchParams.get("q") ?? "";
+
+  const updateSearchParams = (values: {
+    status?: AbsenceFilter;
+    q?: string;
+  }) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (values.status !== undefined) {
+      if (values.status === "all") {
+        params.delete("status");
+      } else {
+        params.set("status", values.status);
+      }
+    }
+
+    if (values.q !== undefined) {
+      const searchValue = values.q.trim();
+
+      if (searchValue) {
+        params.set("q", values.q);
+      } else {
+        params.delete("q");
+      }
+    }
+
+    const queryString = params.toString();
+
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  };
 
   const filteredAbsences = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -86,48 +135,38 @@ export const AbsenceList = ({
             id="absence-search"
             type="search"
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) =>
+              updateSearchParams({
+                q: event.target.value,
+              })
+            }
             placeholder="Name oder E-Mail suchen"
             className={styles.search}
           />
         </div>
 
         <div className={styles.filters} aria-label="Abwesenheiten filtern">
-          <button
-            type="button"
-            className={filter === "all" ? styles.activeFilter : styles.filter}
-            onClick={() => setFilter("all")}
-          >
-            Alle
-          </button>
-
-          <button
-            type="button"
-            className={
-              filter === "current" ? styles.activeFilter : styles.filter
-            }
-            onClick={() => setFilter("current")}
-          >
-            Aktuell
-          </button>
-
-          <button
-            type="button"
-            className={
-              filter === "upcoming" ? styles.activeFilter : styles.filter
-            }
-            onClick={() => setFilter("upcoming")}
-          >
-            Kommend
-          </button>
-
-          <button
-            type="button"
-            className={filter === "past" ? styles.activeFilter : styles.filter}
-            onClick={() => setFilter("past")}
-          >
-            Vergangen
-          </button>
+          {(
+            [
+              ["all", "Alle"],
+              ["current", "Aktuell"],
+              ["upcoming", "Kommend"],
+              ["past", "Vergangen"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={filter === value ? styles.activeFilter : styles.filter}
+              onClick={() =>
+                updateSearchParams({
+                  status: value,
+                })
+              }
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 

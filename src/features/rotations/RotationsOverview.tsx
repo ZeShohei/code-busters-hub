@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
 import type {
   Absence,
@@ -26,6 +27,23 @@ interface RotationsOverviewProps {
   teamMembers: TeamMember[];
 }
 
+const isRotationTypeFilter = (
+  value: string | null,
+): value is RotationTypeFilter => {
+  return value === "all" || value === "dispatcher" || value === "deployment";
+};
+
+const isRotationStatusFilter = (
+  value: string | null,
+): value is RotationStatusFilter => {
+  return (
+    value === "all" ||
+    value === "current" ||
+    value === "upcoming" ||
+    value === "past"
+  );
+};
+
 export const RotationsOverview = ({
   dispatcherRotations,
   deploymentRotations,
@@ -33,9 +51,50 @@ export const RotationsOverview = ({
   substitutions,
   teamMembers,
 }: RotationsOverviewProps) => {
-  const [typeFilter, setTypeFilter] = useState<RotationTypeFilter>("all");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const [statusFilter, setStatusFilter] = useState<RotationStatusFilter>("all");
+  const typeParam = searchParams.get("type");
+
+  const statusParam = searchParams.get("status");
+
+  const typeFilter: RotationTypeFilter = isRotationTypeFilter(typeParam)
+    ? typeParam
+    : "all";
+
+  const statusFilter: RotationStatusFilter = isRotationStatusFilter(statusParam)
+    ? statusParam
+    : "all";
+
+  const updateFilters = (values: {
+    type?: RotationTypeFilter;
+    status?: RotationStatusFilter;
+  }) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (values.type !== undefined) {
+      if (values.type === "all") {
+        params.delete("type");
+      } else {
+        params.set("type", values.type);
+      }
+    }
+
+    if (values.status !== undefined) {
+      if (values.status === "all") {
+        params.delete("status");
+      } else {
+        params.set("status", values.status);
+      }
+    }
+
+    const queryString = params.toString();
+
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  };
 
   const filteredDispatcherRotations = useMemo(() => {
     if (typeFilter === "deployment") {
@@ -75,39 +134,28 @@ export const RotationsOverview = ({
           <span className={styles.filterLabel}>Typ</span>
 
           <div className={styles.filters} aria-label="Rotationstyp filtern">
-            <button
-              type="button"
-              className={
-                typeFilter === "all" ? styles.activeFilter : styles.filter
-              }
-              onClick={() => setTypeFilter("all")}
-            >
-              Alle
-            </button>
-
-            <button
-              type="button"
-              className={
-                typeFilter === "dispatcher"
-                  ? styles.activeFilter
-                  : styles.filter
-              }
-              onClick={() => setTypeFilter("dispatcher")}
-            >
-              Dispatcher
-            </button>
-
-            <button
-              type="button"
-              className={
-                typeFilter === "deployment"
-                  ? styles.activeFilter
-                  : styles.filter
-              }
-              onClick={() => setTypeFilter("deployment")}
-            >
-              Deployment
-            </button>
+            {(
+              [
+                ["all", "Alle"],
+                ["dispatcher", "Dispatcher"],
+                ["deployment", "Deployment"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={
+                  typeFilter === value ? styles.activeFilter : styles.filter
+                }
+                onClick={() =>
+                  updateFilters({
+                    type: value,
+                  })
+                }
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -115,47 +163,29 @@ export const RotationsOverview = ({
           <span className={styles.filterLabel}>Status</span>
 
           <div className={styles.filters} aria-label="Rotationsstatus filtern">
-            <button
-              type="button"
-              className={
-                statusFilter === "all" ? styles.activeFilter : styles.filter
-              }
-              onClick={() => setStatusFilter("all")}
-            >
-              Alle
-            </button>
-
-            <button
-              type="button"
-              className={
-                statusFilter === "current" ? styles.activeFilter : styles.filter
-              }
-              onClick={() => setStatusFilter("current")}
-            >
-              Aktuell
-            </button>
-
-            <button
-              type="button"
-              className={
-                statusFilter === "upcoming"
-                  ? styles.activeFilter
-                  : styles.filter
-              }
-              onClick={() => setStatusFilter("upcoming")}
-            >
-              Kommend
-            </button>
-
-            <button
-              type="button"
-              className={
-                statusFilter === "past" ? styles.activeFilter : styles.filter
-              }
-              onClick={() => setStatusFilter("past")}
-            >
-              Vergangen
-            </button>
+            {(
+              [
+                ["all", "Alle"],
+                ["current", "Aktuell"],
+                ["upcoming", "Kommend"],
+                ["past", "Vergangen"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={
+                  statusFilter === value ? styles.activeFilter : styles.filter
+                }
+                onClick={() =>
+                  updateFilters({
+                    status: value,
+                  })
+                }
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>

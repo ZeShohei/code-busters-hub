@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { absences, substitutions } from "@/features/absences/mockData";
 import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
@@ -19,13 +21,15 @@ export default function RotationsPage() {
         </p>
       </header>
 
-      <RotationsOverview
-        dispatcherRotations={dispatcherRotations}
-        deploymentRotations={deploymentRotations}
-        absences={absences}
-        substitutions={substitutions}
-        teamMembers={teamMembers}
-      />
+      <Suspense fallback={<p>Rotationen werden geladen …</p>}>
+        <RotationsOverview
+          dispatcherRotations={dispatcherRotations}
+          deploymentRotations={deploymentRotations}
+          absences={absences}
+          substitutions={substitutions}
+          teamMembers={teamMembers}
+        />
+      </Suspense>
     </section>
   );
 }

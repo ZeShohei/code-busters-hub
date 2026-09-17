@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { absences, substitutions } from "@/features/absences/mockData";
 import { AbsenceList } from "@/features/absences/AbsenceList";
 import { teamMembers } from "@/features/team/mockData";
@@ -18,11 +20,13 @@ export default function AbsencesPage() {
         </p>
       </header>
 
-      <AbsenceList
-        absences={absences}
-        substitutions={substitutions}
-        teamMembers={teamMembers}
-      />
+      <Suspense fallback={<p>Abwesenheiten werden geladen …</p>}>
+        <AbsenceList
+          absences={absences}
+          substitutions={substitutions}
+          teamMembers={teamMembers}
+        />
+      </Suspense>
     </section>
   );
 }
