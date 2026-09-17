@@ -4,6 +4,58 @@
     gap: 1rem;
 }
 
+.toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.searchWrapper {
+    flex: 1;
+
+    min-width: 16rem;
+    max-width: 24rem;
+}
+
+.searchLabel {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    overflow: hidden;
+
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.search {
+    width: 100%;
+    min-height: 2.5rem;
+
+    padding: 0.5rem 0.875rem;
+
+    border: 1px solid #d4d4d4;
+    border-radius: 0.5rem;
+
+    color: #171717;
+    background: #fff;
+
+    font: inherit;
+    font-size: 0.875rem;
+}
+
+.search::placeholder {
+    color: #888;
+}
+
+.search:focus-visible {
+    outline: 0.125rem solid #2563eb;
+    outline-offset: 0.125rem;
+}
+
 .filters {
     display: flex;
     flex-wrap: wrap;
@@ -138,6 +190,25 @@
 }
 
 @media (max-width: 48rem) {
+    .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .searchWrapper {
+        width: 100%;
+        max-width: none;
+    }
+
+    .filters {
+        width: 100%;
+    }
+
+    .filter,
+    .activeFilter {
+        flex: 1;
+    }
+
     .card {
         grid-template-columns: 1fr;
         gap: 1rem;

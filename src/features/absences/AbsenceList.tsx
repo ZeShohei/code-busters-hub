@@ -64,50 +64,93 @@ export const AbsenceList = ({
 }: AbsenceListProps) => {
   const [filter, setFilter] = useState<AbsenceFilter>("all");
 
-  const filteredAbsences = useMemo(() => {
-    if (filter === "all") {
-      return absences;
-    }
+  const [searchTerm, setSearchTerm] = useState("");
 
-    return absences.filter((absence) => getAbsenceStatus(absence) === filter);
-  }, [absences, filter]);
+  const filteredAbsences = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    return absences.filter((absence) => {
+      const matchesStatus =
+        filter === "all" || getAbsenceStatus(absence) === filter;
+
+      if (!matchesStatus) {
+        return false;
+      }
+
+      if (!normalizedSearchTerm) {
+        return true;
+      }
+
+      const teamMember = teamMembers.find(
+        (member) => member.id === absence.teamMemberId,
+      );
+
+      if (!teamMember) {
+        return false;
+      }
+
+      return (
+        teamMember.displayName.toLowerCase().includes(normalizedSearchTerm) ||
+        teamMember.email.toLowerCase().includes(normalizedSearchTerm)
+      );
+    });
+  }, [absences, filter, searchTerm, teamMembers]);
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.filters} aria-label="Abwesenheiten filtern">
-        <button
-          type="button"
-          className={filter === "all" ? styles.activeFilter : styles.filter}
-          onClick={() => setFilter("all")}
-        >
-          Alle
-        </button>
+      <div className={styles.toolbar}>
+        <div className={styles.searchWrapper}>
+          <label htmlFor="absence-search" className={styles.searchLabel}>
+            Abwesenheiten durchsuchen
+          </label>
 
-        <button
-          type="button"
-          className={filter === "current" ? styles.activeFilter : styles.filter}
-          onClick={() => setFilter("current")}
-        >
-          Aktuell
-        </button>
+          <input
+            id="absence-search"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Name oder E-Mail suchen"
+            className={styles.search}
+          />
+        </div>
 
-        <button
-          type="button"
-          className={
-            filter === "upcoming" ? styles.activeFilter : styles.filter
-          }
-          onClick={() => setFilter("upcoming")}
-        >
-          Kommend
-        </button>
+        <div className={styles.filters} aria-label="Abwesenheiten filtern">
+          <button
+            type="button"
+            className={filter === "all" ? styles.activeFilter : styles.filter}
+            onClick={() => setFilter("all")}
+          >
+            Alle
+          </button>
 
-        <button
-          type="button"
-          className={filter === "past" ? styles.activeFilter : styles.filter}
-          onClick={() => setFilter("past")}
-        >
-          Vergangen
-        </button>
+          <button
+            type="button"
+            className={
+              filter === "current" ? styles.activeFilter : styles.filter
+            }
+            onClick={() => setFilter("current")}
+          >
+            Aktuell
+          </button>
+
+          <button
+            type="button"
+            className={
+              filter === "upcoming" ? styles.activeFilter : styles.filter
+            }
+            onClick={() => setFilter("upcoming")}
+          >
+            Kommend
+          </button>
+
+          <button
+            type="button"
+            className={filter === "past" ? styles.activeFilter : styles.filter}
+            onClick={() => setFilter("past")}
+          >
+            Vergangen
+          </button>
+        </div>
       </div>
 
       <span className={styles.resultCount}>
@@ -115,9 +158,7 @@ export const AbsenceList = ({
       </span>
 
       {filteredAbsences.length === 0 ? (
-        <p className={styles.empty}>
-          Keine Abwesenheiten für diesen Filter vorhanden.
-        </p>
+        <p className={styles.empty}>Keine passenden Abwesenheiten gefunden.</p>
       ) : (
         <div className={styles.list}>
           {filteredAbsences.map((absence) => {
