@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: code-busters-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: code_busters_hub
+      POSTGRES_USER: code_busters
+      POSTGRES_PASSWORD: code_busters_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - code_busters_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  code_busters_postgres_data:
