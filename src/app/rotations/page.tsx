@@ -1,7 +1,7 @@
 import { absences, substitutions } from "@/features/absences/mockData";
 import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
-import { RotationList } from "@/features/rotations/RotationList";
+import { RotationsOverview } from "@/features/rotations/RotationsOverview";
 import { teamMembers } from "@/features/team/mockData";
 
 import styles from "./page.module.css";
@@ -19,19 +19,9 @@ export default function RotationsPage() {
         </p>
       </header>
 
-      <RotationList
-        title="Dispatcher"
-        description="Wöchentliche Verantwortung für Monitoring und New Relic."
-        rotations={dispatcherRotations}
-        absences={absences}
-        substitutions={substitutions}
-        teamMembers={teamMembers}
-      />
-
-      <RotationList
-        title="Deployment"
-        description="Wöchentliche Verantwortung für Deployments."
-        rotations={deploymentRotations}
+      <RotationsOverview
+        dispatcherRotations={dispatcherRotations}
+        deploymentRotations={deploymentRotations}
         absences={absences}
         substitutions={substitutions}
         teamMembers={teamMembers}
