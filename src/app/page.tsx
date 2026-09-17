@@ -8,6 +8,7 @@ import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
 import { getCurrentRotation, isDateAfter, isDateInRange } from "@/utils/date";
+import { PageHeader } from "@/components/PageHeader/PageHeader";
 
 import styles from "./page.module.css";
 
@@ -34,16 +35,11 @@ export default function Home() {
 
   return (
     <section className={styles.dashboard}>
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Code Busters Hub</p>
-
-        <h1>Teamübersicht</h1>
-
-        <p>
-          Alles Wichtige zu Abwesenheiten, Vertretungen und Rotationen auf einen
-          Blick.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Code Busters Hub"
+        title="Teamübersicht"
+        description="Alles Wichtige zu Abwesenheiten, Vertretungen und Rotationen auf einen Blick."
+      />
 
       <div className={styles.grid}>
         <article className={styles.card}>
