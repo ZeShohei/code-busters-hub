@@ -15,6 +15,13 @@ export const absences: Absence[] = [
     endDate: "2026-09-18",
     type: "vacation",
   },
+  {
+    id: "absence-3",
+    teamMemberId: "2",
+    startDate: "2026-09-28",
+    endDate: "2026-10-02",
+    type: "vacation",
+  },
 ];
 
 export const substitutions: Substitution[] = [
@@ -31,5 +38,12 @@ export const substitutions: Substitution[] = [
     substituteTeamMemberId: "1",
     startDate: "2026-09-14",
     endDate: "2026-09-18",
+  },
+  {
+    id: "substitution-3",
+    teamMemberId: "2",
+    substituteTeamMemberId: "3",
+    startDate: "2026-09-28",
+    endDate: "2026-10-02",
   },
 ];
