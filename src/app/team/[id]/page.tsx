@@ -5,13 +5,14 @@ import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
-import type { RotationAssignment } from "@/types/team";
+import type { Absence, RotationAssignment } from "@/types/team";
 import {
   formatDate,
   getCalendarWeek,
   isDateInRange,
   parseDate,
 } from "@/utils/date";
+import Link from "next/link";
 
 import styles from "./page.module.css";
 
@@ -77,6 +78,43 @@ const getRelevantRotations = (rotations: RotationAssignment[]) => {
   return [...current, ...upcoming, ...past];
 };
 
+type AbsenceStatus = "current" | "upcoming" | "past";
+
+const getAbsenceStatus = (absence: Absence): AbsenceStatus => {
+  const today = new Date();
+
+  if (isDateInRange(absence.startDate, absence.endDate, today)) {
+    return "current";
+  }
+
+  if (parseDate(absence.startDate) > today) {
+    return "upcoming";
+  }
+
+  return "past";
+};
+
+const getAbsenceStatusLabel = (status: AbsenceStatus) => {
+  switch (status) {
+    case "current":
+      return "Aktuell";
+
+    case "upcoming":
+      return "Kommend";
+
+    case "past":
+      return "Vergangen";
+  }
+};
+
+const sortAbsencesByStartDate = (absences: Absence[]) => {
+  return [...absences].sort(
+    (first, second) =>
+      parseDate(first.startDate).getTime() -
+      parseDate(second.startDate).getTime(),
+  );
+};
+
 const renderRotationList = (
   rotations: RotationAssignment[],
   emptyText: string,
@@ -138,8 +176,8 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
     notFound();
   }
 
-  const memberAbsences = absences.filter(
-    (absence) => absence.teamMemberId === teamMember.id,
+  const memberAbsences = sortAbsencesByStartDate(
+    absences.filter((absence) => absence.teamMemberId === teamMember.id),
   );
 
   const currentAbsence = memberAbsences.find((absence) =>
@@ -168,6 +206,9 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
 
   return (
     <section className={styles.page}>
+      <Link href="/team" className={styles.backLink}>
+        ← Zur Teamübersicht
+      </Link>
       <header className={styles.header}>
         <p className={styles.eyebrow}>Teammitglied</p>
 
@@ -203,39 +244,85 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
       </header>
 
       <section className={styles.section}>
-        <h2>Abwesenheiten</h2>
+        <div className={styles.sectionHeading}>
+          <div>
+            <h2>Abwesenheiten</h2>
+
+            <p>
+              Aktuelle, kommende und vergangene Abwesenheiten inklusive
+              Vertretung.
+            </p>
+          </div>
+        </div>
 
         {memberAbsences.length === 0 ? (
           <p className={styles.empty}>Keine Abwesenheiten eingetragen.</p>
         ) : (
           <div className={styles.list}>
-            {memberAbsences.map((absence) => (
-              <article key={absence.id} className={styles.card}>
-                <div>
-                  <span>Typ</span>
+            {memberAbsences.map((absence) => {
+              const status = getAbsenceStatus(absence);
 
-                  <strong>
-                    {absence.type === "vacation"
-                      ? "Urlaub"
-                      : absence.type === "sickLeave"
-                        ? "Krankenstand"
-                        : "Abwesend"}
-                  </strong>
-                </div>
+              const substitution = substitutions.find(
+                (item) =>
+                  item.teamMemberId === teamMember.id &&
+                  item.startDate <= absence.endDate &&
+                  item.endDate >= absence.startDate,
+              );
 
-                <div>
-                  <span>Von</span>
+              return (
+                <article key={absence.id} className={styles.card}>
+                  <div>
+                    <span>Typ</span>
 
-                  <strong>{formatDate(absence.startDate)}</strong>
-                </div>
+                    <strong>
+                      {absence.type === "vacation"
+                        ? "Urlaub"
+                        : absence.type === "sickLeave"
+                          ? "Krankenstand"
+                          : "Abwesend"}
+                    </strong>
+                  </div>
 
-                <div>
-                  <span>Bis</span>
+                  <div>
+                    <span>Zeitraum</span>
 
-                  <strong>{formatDate(absence.endDate)}</strong>
-                </div>
-              </article>
-            ))}
+                    <strong>
+                      {formatDate(absence.startDate)} –{" "}
+                      {formatDate(absence.endDate)}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Status</span>
+
+                    <strong
+                      className={`${styles.absenceStatus} ${
+                        status === "current"
+                          ? styles.absenceStatusCurrent
+                          : status === "upcoming"
+                            ? styles.absenceStatusUpcoming
+                            : styles.absenceStatusPast
+                      }`}
+                    >
+                      {getAbsenceStatusLabel(status)}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Vertretung</span>
+
+                    <strong>
+                      {substitution
+                        ? getTeamMemberName(
+                            substitution.substituteTeamMemberId,
+                            teamMembers,
+                          )
+                        : "Keine Vertretung"}
+                    </strong>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
