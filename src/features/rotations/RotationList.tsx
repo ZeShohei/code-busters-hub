@@ -5,6 +5,8 @@ import type {
   TeamMember,
 } from "@/types/team";
 
+import { formatDate, getCalendarWeek } from "@/utils/date";
+
 import { getTeamMemberName } from "@/features/team/utils";
 
 import { resolveRotation } from "./utils";
@@ -19,30 +21,6 @@ interface RotationListProps {
   substitutions: Substitution[];
   teamMembers: TeamMember[];
 }
-
-const formatDate = (date: string) => {
-  const [year, month, day] = date.split("-").map(Number);
-
-  return new Intl.DateTimeFormat("de-AT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(year, month - 1, day));
-};
-
-const getCalendarWeek = (dateString: string) => {
-  const [year, month, day] = dateString.split("-").map(Number);
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  const dayNumber = date.getUTCDay() || 7;
-
-  date.setUTCDate(date.getUTCDate() + 4 - dayNumber);
-
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-
-  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-};
 
 export const RotationList = ({
   title,

@@ -21,7 +21,7 @@ import {
   getWeekDays,
   isDateInRange,
   isSameDay,
-} from "./utils";
+} from "@/utils/date";
 
 import styles from "./WeekOverview.module.css";
 

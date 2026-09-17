@@ -7,10 +7,7 @@ import { resolveRotation } from "@/features/rotations/utils";
 import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
-import {
-  getCurrentRotation,
-  isDateInRange,
-} from "@/features/weekOverview/utils";
+import { getCurrentRotation, isDateAfter, isDateInRange } from "@/utils/date";
 
 import styles from "./page.module.css";
 
@@ -32,7 +29,7 @@ export default function Home() {
   );
 
   const upcomingAbsences = absences
-    .filter((absence) => new Date(absence.startDate) > new Date())
+    .filter((absence) => isDateAfter(absence.startDate))
     .slice(0, 3);
 
   return (
