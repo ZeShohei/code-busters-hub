@@ -1,10 +1,11 @@
-import { absences } from "@/features/absences/mockData";
+import { absences, substitutions } from "@/features/absences/mockData";
 import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import {
   deploymentRotationConfig,
   dispatcherRotationConfig,
 } from "@/features/rotations/config";
+import { resolveRotation } from "@/features/rotations/utils";
 import { teamMembers } from "@/features/team/mockData";
 import { getCurrentRotation, isDateInRange } from "@/utils/date";
 
@@ -15,6 +16,14 @@ export default function TeamPage() {
 
   const currentDeployment = getCurrentRotation(deploymentRotations);
 
+  const dispatcherResolution = currentDispatcher
+    ? resolveRotation(currentDispatcher, absences, substitutions)
+    : undefined;
+
+  const deploymentResolution = currentDeployment
+    ? resolveRotation(currentDeployment, absences, substitutions)
+    : undefined;
+
   return (
     <section className={styles.page}>
       <header className={styles.header}>
@@ -23,8 +32,8 @@ export default function TeamPage() {
         <h1>Team</h1>
 
         <p className={styles.description}>
-          Übersicht über Teammitglieder, Abwesenheiten und Rotations-
-          verantwortlichkeiten.
+          Übersicht über Teammitglieder, Abwesenheiten und
+          Rotationsverantwortlichkeiten.
         </p>
       </header>
 
@@ -46,11 +55,27 @@ export default function TeamPage() {
               teamMember.id,
             );
 
-          const isCurrentDispatcher =
-            currentDispatcher?.teamMemberId === teamMember.id;
+          const isEffectiveDispatcher =
+            dispatcherResolution?.effectiveTeamMemberId === teamMember.id;
 
-          const isCurrentDeployment =
-            currentDeployment?.teamMemberId === teamMember.id;
+          const isAssignedDispatcher =
+            dispatcherResolution?.assignedTeamMemberId === teamMember.id;
+
+          const isEffectiveDeployment =
+            deploymentResolution?.effectiveTeamMemberId === teamMember.id;
+
+          const isAssignedDeployment =
+            deploymentResolution?.assignedTeamMemberId === teamMember.id;
+
+          const isSubstitutedDispatcher =
+            dispatcherResolution?.status === "substitution" &&
+            isAssignedDispatcher &&
+            !isEffectiveDispatcher;
+
+          const isSubstitutedDeployment =
+            deploymentResolution?.status === "substitution" &&
+            isAssignedDeployment &&
+            !isEffectiveDeployment;
 
           return (
             <article key={teamMember.id} className={styles.teamMember}>
@@ -108,21 +133,52 @@ export default function TeamPage() {
                 <span className={styles.label}>Diese Woche</span>
 
                 <div className={styles.badges}>
-                  {isCurrentDispatcher && (
-                    <span className={`${styles.badge} ${styles.badgeCurrent}`}>
-                      Dispatcher
+                  {isEffectiveDispatcher && (
+                    <span
+                      className={`${styles.badge} ${
+                        dispatcherResolution?.status === "substitution"
+                          ? styles.badgeSubstitution
+                          : styles.badgeCurrent
+                      }`}
+                    >
+                      {dispatcherResolution?.status === "substitution"
+                        ? "Dispatcher-Vertretung"
+                        : "Dispatcher"}
                     </span>
                   )}
 
-                  {isCurrentDeployment && (
-                    <span className={`${styles.badge} ${styles.badgeCurrent}`}>
-                      Deployment
+                  {isEffectiveDeployment && (
+                    <span
+                      className={`${styles.badge} ${
+                        deploymentResolution?.status === "substitution"
+                          ? styles.badgeSubstitution
+                          : styles.badgeCurrent
+                      }`}
+                    >
+                      {deploymentResolution?.status === "substitution"
+                        ? "Deployment-Vertretung"
+                        : "Deployment"}
                     </span>
                   )}
 
-                  {!isCurrentDispatcher && !isCurrentDeployment && (
-                    <span className={styles.muted}>Keine Verantwortung</span>
+                  {isSubstitutedDispatcher && (
+                    <span className={`${styles.badge} ${styles.badgeReplaced}`}>
+                      Dispatcher vertreten
+                    </span>
                   )}
+
+                  {isSubstitutedDeployment && (
+                    <span className={`${styles.badge} ${styles.badgeReplaced}`}>
+                      Deployment vertreten
+                    </span>
+                  )}
+
+                  {!isEffectiveDispatcher &&
+                    !isEffectiveDeployment &&
+                    !isSubstitutedDispatcher &&
+                    !isSubstitutedDeployment && (
+                      <span className={styles.muted}>Keine Verantwortung</span>
+                    )}
                 </div>
               </div>
             </article>
