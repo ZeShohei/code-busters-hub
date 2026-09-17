@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { absences, substitutions } from "@/features/absences/mockData";
 import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
@@ -10,6 +8,7 @@ import { WeekOverview } from "@/features/weekOverview/WeekOverview";
 import { getCurrentRotation, isDateAfter, isDateInRange } from "@/utils/date";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { DashboardCard } from "@/components/DashboardCard/DashboardCard";
+import { UpcomingAbsences } from "@/features/absences/UpcomingAbsences";
 
 import styles from "./page.module.css";
 
@@ -132,41 +131,7 @@ export default function Home() {
         deploymentRotations={deploymentRotations}
       />
 
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2>Kommende Abwesenheiten</h2>
-
-            <p>Die nächsten geplanten Abwesenheiten im Team.</p>
-          </div>
-
-          <Link href="/absences">Alle anzeigen</Link>
-        </div>
-
-        <div className={styles.absenceList}>
-          {upcomingAbsences.map((absence) => (
-            <article key={absence.id} className={styles.absence}>
-              <div>
-                <strong>
-                  {getTeamMemberName(absence.teamMemberId, teamMembers)}
-                </strong>
-
-                <span>
-                  {absence.type === "vacation"
-                    ? "Urlaub"
-                    : absence.type === "sickLeave"
-                      ? "Krankenstand"
-                      : "Abwesend"}
-                </span>
-              </div>
-
-              <span>
-                {absence.startDate} – {absence.endDate}
-              </span>
-            </article>
-          ))}
-        </div>
-      </section>
+      <UpcomingAbsences absences={upcomingAbsences} teamMembers={teamMembers} />
     </section>
   );
 }
