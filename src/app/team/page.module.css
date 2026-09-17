@@ -172,6 +172,25 @@
     background: #fef3c7;
 }
 
+.personLink {
+    color: inherit;
+
+    font-size: 0.9375rem;
+    font-weight: 700;
+
+    text-decoration: none;
+}
+
+.personLink:hover {
+    text-decoration: underline;
+}
+
+.personLink:focus-visible {
+    outline: 0.125rem solid #2563eb;
+    outline-offset: 0.125rem;
+    border-radius: 0.125rem;
+}
+
 @media (max-width: 64rem) {
     .teamMember {
         grid-template-columns:

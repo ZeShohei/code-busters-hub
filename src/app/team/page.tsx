@@ -10,6 +10,7 @@ import { teamMembers } from "@/features/team/mockData";
 import { getCurrentRotation, isDateInRange } from "@/utils/date";
 
 import styles from "./page.module.css";
+import Link from "next/link";
 
 export default function TeamPage() {
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
@@ -87,7 +88,12 @@ export default function TeamPage() {
                 </div>
 
                 <div className={styles.personDetails}>
-                  <strong>{teamMember.displayName}</strong>
+                  <Link
+                    href={`/team/${teamMember.id}`}
+                    className={styles.personLink}
+                  >
+                    {teamMember.displayName}
+                  </Link>
 
                   <a href={`mailto:${teamMember.email}`}>{teamMember.email}</a>
                 </div>
