@@ -1,6 +1,6 @@
+import { teamMembers } from "@/data/mockData";
 import { deploymentRotationConfig } from "@/features/rotations/config";
 import { generateRotations } from "@/features/rotations/utils";
-import { teamMembers } from "@/features/team/mockData";
 
 const deploymentTeamMembers = teamMembers.filter((teamMember) =>
   deploymentRotationConfig.participantTeamMemberIds.includes(teamMember.id),
