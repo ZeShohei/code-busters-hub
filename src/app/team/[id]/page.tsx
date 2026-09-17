@@ -5,7 +5,13 @@ import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
-import { formatDate, getCalendarWeek, isDateInRange } from "@/utils/date";
+import type { RotationAssignment } from "@/types/team";
+import {
+  formatDate,
+  getCalendarWeek,
+  isDateInRange,
+  parseDate,
+} from "@/utils/date";
 
 import styles from "./page.module.css";
 
@@ -14,6 +20,114 @@ interface TeamMemberPageProps {
     id: string;
   }>;
 }
+
+type RotationStatus = "current" | "upcoming" | "past";
+
+const getRotationStatus = (rotation: RotationAssignment): RotationStatus => {
+  const today = new Date();
+
+  if (isDateInRange(rotation.startDate, rotation.endDate, today)) {
+    return "current";
+  }
+
+  if (parseDate(rotation.startDate) > today) {
+    return "upcoming";
+  }
+
+  return "past";
+};
+
+const getRotationStatusLabel = (status: RotationStatus) => {
+  switch (status) {
+    case "current":
+      return "Aktuell";
+
+    case "upcoming":
+      return "Kommend";
+
+    case "past":
+      return "Vergangen";
+  }
+};
+
+const sortRotationsByStartDate = (rotations: RotationAssignment[]) => {
+  return [...rotations].sort(
+    (first, second) =>
+      parseDate(first.startDate).getTime() -
+      parseDate(second.startDate).getTime(),
+  );
+};
+
+const getRelevantRotations = (rotations: RotationAssignment[]) => {
+  const sorted = sortRotationsByStartDate(rotations);
+
+  const current = sorted.filter(
+    (rotation) => getRotationStatus(rotation) === "current",
+  );
+
+  const upcoming = sorted
+    .filter((rotation) => getRotationStatus(rotation) === "upcoming")
+    .slice(0, 3);
+
+  const past = sorted
+    .filter((rotation) => getRotationStatus(rotation) === "past")
+    .slice(-3)
+    .reverse();
+
+  return [...current, ...upcoming, ...past];
+};
+
+const renderRotationList = (
+  rotations: RotationAssignment[],
+  emptyText: string,
+) => {
+  if (rotations.length === 0) {
+    return <p className={styles.empty}>{emptyText}</p>;
+  }
+
+  return (
+    <div className={styles.list}>
+      {rotations.map((rotation) => {
+        const status = getRotationStatus(rotation);
+
+        return (
+          <article key={rotation.id} className={styles.card}>
+            <div>
+              <span>KW</span>
+
+              <strong>{getCalendarWeek(rotation.startDate)}</strong>
+            </div>
+
+            <div>
+              <span>Zeitraum</span>
+
+              <strong>
+                {formatDate(rotation.startDate)} –{" "}
+                {formatDate(rotation.endDate)}
+              </strong>
+            </div>
+
+            <div>
+              <span>Status</span>
+
+              <strong
+                className={`${styles.rotationStatus} ${
+                  status === "current"
+                    ? styles.rotationStatusCurrent
+                    : status === "upcoming"
+                      ? styles.rotationStatusUpcoming
+                      : styles.rotationStatusPast
+                }`}
+              >
+                {getRotationStatusLabel(status)}
+              </strong>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+};
 
 export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
   const { id } = await params;
@@ -32,12 +146,16 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
     isDateInRange(absence.startDate, absence.endDate),
   );
 
-  const memberDispatcherRotations = dispatcherRotations.filter(
-    (rotation) => rotation.teamMemberId === teamMember.id,
+  const memberDispatcherRotations = getRelevantRotations(
+    dispatcherRotations.filter(
+      (rotation) => rotation.teamMemberId === teamMember.id,
+    ),
   );
 
-  const memberDeploymentRotations = deploymentRotations.filter(
-    (rotation) => rotation.teamMemberId === teamMember.id,
+  const memberDeploymentRotations = getRelevantRotations(
+    deploymentRotations.filter(
+      (rotation) => rotation.teamMemberId === teamMember.id,
+    ),
   );
 
   const substitutionsForMember = substitutions.filter(
@@ -123,60 +241,32 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
       </section>
 
       <section className={styles.section}>
-        <h2>Dispatcher-Rotationen</h2>
+        <div className={styles.sectionHeading}>
+          <div>
+            <h2>Dispatcher-Rotationen</h2>
 
-        {memberDispatcherRotations.length === 0 ? (
-          <p className={styles.empty}>Keine Dispatcher-Rotationen.</p>
-        ) : (
-          <div className={styles.list}>
-            {memberDispatcherRotations.map((rotation) => (
-              <article key={rotation.id} className={styles.card}>
-                <div>
-                  <span>KW</span>
-
-                  <strong>{getCalendarWeek(rotation.startDate)}</strong>
-                </div>
-
-                <div>
-                  <span>Zeitraum</span>
-
-                  <strong>
-                    {formatDate(rotation.startDate)} –{" "}
-                    {formatDate(rotation.endDate)}
-                  </strong>
-                </div>
-              </article>
-            ))}
+            <p>Aktuelle sowie die nächsten und letzten Rotationen.</p>
           </div>
+        </div>
+
+        {renderRotationList(
+          memberDispatcherRotations,
+          "Keine Dispatcher-Rotationen.",
         )}
       </section>
 
       <section className={styles.section}>
-        <h2>Deployment-Rotationen</h2>
+        <div className={styles.sectionHeading}>
+          <div>
+            <h2>Deployment-Rotationen</h2>
 
-        {memberDeploymentRotations.length === 0 ? (
-          <p className={styles.empty}>Keine Deployment-Rotationen.</p>
-        ) : (
-          <div className={styles.list}>
-            {memberDeploymentRotations.map((rotation) => (
-              <article key={rotation.id} className={styles.card}>
-                <div>
-                  <span>KW</span>
-
-                  <strong>{getCalendarWeek(rotation.startDate)}</strong>
-                </div>
-
-                <div>
-                  <span>Zeitraum</span>
-
-                  <strong>
-                    {formatDate(rotation.startDate)} –{" "}
-                    {formatDate(rotation.endDate)}
-                  </strong>
-                </div>
-              </article>
-            ))}
+            <p>Aktuelle sowie die nächsten und letzten Rotationen.</p>
           </div>
+        </div>
+
+        {renderRotationList(
+          memberDeploymentRotations,
+          "Keine Deployment-Rotationen.",
         )}
       </section>
 
