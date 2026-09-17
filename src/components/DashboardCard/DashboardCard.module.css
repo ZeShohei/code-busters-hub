@@ -1,0 +1,43 @@
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+
+    min-width: 0;
+
+    padding: 1.5rem;
+
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+
+    background: #fff;
+}
+
+.warningCard {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.label {
+    color: #666;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.value {
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+.description {
+    color: #666;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.warning {
+    color: #b45309;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.5;
+}

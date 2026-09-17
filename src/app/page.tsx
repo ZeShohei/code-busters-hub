@@ -9,6 +9,7 @@ import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
 import { getCurrentRotation, isDateAfter, isDateInRange } from "@/utils/date";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+import { DashboardCard } from "@/components/DashboardCard/DashboardCard";
 
 import styles from "./page.module.css";
 
@@ -42,83 +43,85 @@ export default function Home() {
       />
 
       <div className={styles.grid}>
-        <article className={styles.card}>
-          <span className={styles.label}>Dispatcher diese Woche</span>
-
-          <strong className={styles.value}>
-            {dispatcherResolution
+        <DashboardCard
+          label="Dispatcher diese Woche"
+          value={
+            dispatcherResolution
               ? getTeamMemberName(
                   dispatcherResolution.effectiveTeamMemberId,
                   teamMembers,
                 )
-              : "Nicht eingeteilt"}
-          </strong>
+              : "Nicht eingeteilt"
+          }
+          status={
+            dispatcherResolution?.status === "substitution" ||
+            dispatcherResolution?.status === "uncovered"
+              ? "warning"
+              : "default"
+          }
+          description={
+            dispatcherResolution?.status === "substitution" ? (
+              <>
+                Vertretung für{" "}
+                {getTeamMemberName(
+                  dispatcherResolution.assignedTeamMemberId,
+                  teamMembers,
+                )}
+              </>
+            ) : dispatcherResolution?.status === "uncovered" ? (
+              <>Abwesend – keine Vertretung eingetragen</>
+            ) : (
+              <>Verantwortlich für Monitoring und New Relic.</>
+            )
+          }
+        />
 
-          {dispatcherResolution?.status === "substitution" ? (
-            <p className={styles.warning}>
-              Vertretung für{" "}
-              {getTeamMemberName(
-                dispatcherResolution.assignedTeamMemberId,
-                teamMembers,
-              )}
-            </p>
-          ) : dispatcherResolution?.status === "uncovered" ? (
-            <p className={styles.warning}>
-              Abwesend – keine Vertretung eingetragen
-            </p>
-          ) : (
-            <p className={styles.description}>
-              Verantwortlich für Monitoring und New Relic.
-            </p>
-          )}
-        </article>
-
-        <article className={styles.card}>
-          <span className={styles.label}>Deployment diese Woche</span>
-
-          <strong className={styles.value}>
-            {deploymentResolution
+        <DashboardCard
+          label="Deployment diese Woche"
+          value={
+            deploymentResolution
               ? getTeamMemberName(
                   deploymentResolution.effectiveTeamMemberId,
                   teamMembers,
                 )
-              : "Nicht eingeteilt"}
-          </strong>
+              : "Nicht eingeteilt"
+          }
+          status={
+            deploymentResolution?.status === "substitution" ||
+            deploymentResolution?.status === "uncovered"
+              ? "warning"
+              : "default"
+          }
+          description={
+            deploymentResolution?.status === "substitution" ? (
+              <>
+                Vertretung für{" "}
+                {getTeamMemberName(
+                  deploymentResolution.assignedTeamMemberId,
+                  teamMembers,
+                )}
+              </>
+            ) : deploymentResolution?.status === "uncovered" ? (
+              <>Abwesend – keine Vertretung eingetragen</>
+            ) : (
+              <>Zuständig für die aktuelle Deployment-Rotation.</>
+            )
+          }
+        />
 
-          {deploymentResolution?.status === "substitution" ? (
-            <p className={styles.warning}>
-              Vertretung für{" "}
-              {getTeamMemberName(
-                deploymentResolution.assignedTeamMemberId,
-                teamMembers,
-              )}
-            </p>
-          ) : deploymentResolution?.status === "uncovered" ? (
-            <p className={styles.warning}>
-              Abwesend – keine Vertretung eingetragen
-            </p>
-          ) : (
-            <p className={styles.description}>
-              Zuständig für die aktuelle Deployment-Rotation.
-            </p>
-          )}
-        </article>
-
-        <article className={styles.card}>
-          <span className={styles.label}>Heute abwesend</span>
-
-          <strong className={styles.value}>{currentAbsences.length}</strong>
-
-          <p className={styles.description}>
-            {currentAbsences.length === 0
+        <DashboardCard
+          label="Heute abwesend"
+          value={currentAbsences.length}
+          description={
+            currentAbsences.length === 0
               ? "Heute sind keine Abwesenheiten eingetragen."
               : currentAbsences
                   .map((absence) =>
                     getTeamMemberName(absence.teamMemberId, teamMembers),
                   )
-                  .join(", ")}
-          </p>
-        </article>
+                  .join(", ")
+          }
+        />
       </div>
 
       <WeekOverview
