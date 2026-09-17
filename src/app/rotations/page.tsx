@@ -7,10 +7,22 @@ import { RotationsOverview } from "@/features/rotations/RotationsOverview";
 import { teamMembers } from "@/features/team/mockData";
 
 import styles from "./page.module.css";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 
 export default function RotationsPage() {
   return (
     <section className={styles.page}>
+      <Breadcrumbs
+        items={[
+          {
+            label: "Übersicht",
+            href: "/",
+          },
+          {
+            label: "Rotationen",
+          },
+        ]}
+      />
       <header className={styles.header}>
         <p className={styles.eyebrow}>Teamorganisation</p>
 

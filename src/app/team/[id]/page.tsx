@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 
 import styles from "./page.module.css";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 
 interface TeamMemberPageProps {
   params: Promise<{
@@ -157,9 +158,17 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
 
   return (
     <section className={styles.page}>
-      <Link href="/team" className={styles.backLink}>
-        ← Zur Teamübersicht
-      </Link>
+      <Breadcrumbs
+        items={[
+          {
+            label: "Team",
+            href: "/team",
+          },
+          {
+            label: teamMember.displayName,
+          },
+        ]}
+      />
       <header className={styles.header}>
         <p className={styles.eyebrow}>Teammitglied</p>
 
