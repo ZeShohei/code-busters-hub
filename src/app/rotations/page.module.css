@@ -67,7 +67,6 @@
     grid-template-columns:
     5rem
     minmax(12rem, 1fr)
-    minmax(10rem, auto)
     auto;
 
     align-items: center;
@@ -79,6 +78,34 @@
     border-radius: 0.75rem;
 
     background: #fff;
+}
+
+.rotationCardSubstitution {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.rotationCardWarning {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.statusRegular {
+    color: #166534 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.statusSubstitution {
+    color: #1d4ed8 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+}
+
+.statusWarning {
+    color: #b45309 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
 }
 
 .week,
@@ -103,11 +130,6 @@
 .person strong,
 .period strong {
     font-size: 0.875rem;
-}
-
-.rotationCardConflict {
-    border-color: #f59e0b;
-    background: #fffbeb;
 }
 
 .warning {

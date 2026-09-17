@@ -1,44 +1,49 @@
 import { absences, substitutions } from "@/features/absences/mockData";
-import { teamMembers } from "@/features/team/mockData";
 import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
-import {
-  getRotationAbsence,
-  getRotationSubstitution,
-} from "@/features/rotations/utils";
+import { resolveRotation } from "@/features/rotations/utils";
+import { teamMembers } from "@/features/team/mockData";
+import { getTeamMemberName } from "@/features/team/utils";
+import type { RotationAssignment } from "@/types/team";
 
 import styles from "./page.module.css";
 
-const getTeamMemberName = (teamMemberId: string) => {
-  const teamMember = teamMembers.find((member) => member.id === teamMemberId);
-
-  return teamMember?.displayName ?? "Unbekannt";
-};
-
 const formatDate = (date: string) => {
+  const [year, month, day] = date.split("-").map(Number);
+
   return new Intl.DateTimeFormat("de-AT", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(new Date(year, month - 1, day));
 };
 
 const getCalendarWeek = (dateString: string) => {
-  const date = new Date(dateString);
+  const [year, month, day] = dateString.split("-").map(Number);
 
-  const target = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
+  const date = new Date(Date.UTC(year, month - 1, day));
 
-  const dayNumber = target.getUTCDay() || 7;
+  const dayNumber = date.getUTCDay() || 7;
 
-  target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+  date.setUTCDate(date.getUTCDate() + 4 - dayNumber);
 
-  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
 
-  return Math.ceil(
-    ((target.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+};
+
+const getRotationCardClassName = (rotation: RotationAssignment) => {
+  const resolution = resolveRotation(rotation, absences, substitutions);
+
+  if (resolution.status === "substitution") {
+    return `${styles.rotationCard} ${styles.rotationCardSubstitution}`;
+  }
+
+  if (resolution.status === "uncovered") {
+    return `${styles.rotationCard} ${styles.rotationCardWarning}`;
+  }
+
+  return styles.rotationCard;
 };
 
 export default function RotationsPage() {
@@ -65,19 +70,16 @@ export default function RotationsPage() {
 
         <div className={styles.rotationList}>
           {dispatcherRotations.map((rotation) => {
-            const absence = getRotationAbsence(rotation, absences);
-
-            const substitution = getRotationSubstitution(
+            const resolution = resolveRotation(
               rotation,
+              absences,
               substitutions,
             );
 
             return (
               <article
                 key={rotation.id}
-                className={`${styles.rotationCard} ${
-                  absence ? styles.rotationCardConflict : ""
-                }`}
+                className={getRotationCardClassName(rotation)}
               >
                 <div className={styles.week}>
                   <span>KW</span>
@@ -88,26 +90,35 @@ export default function RotationsPage() {
                 <div className={styles.person}>
                   <span>Verantwortlich</span>
 
-                  <strong>{getTeamMemberName(rotation.teamMemberId)}</strong>
+                  <strong>
+                    {getTeamMemberName(
+                      resolution.effectiveTeamMemberId,
+                      teamMembers,
+                    )}
+                  </strong>
 
-                  {absence ? (
-                    <span className={styles.warning}>
-                      In diesem Zeitraum abwesend
+                  {resolution.status === "regular" && (
+                    <span className={styles.statusRegular}>
+                      Regulär eingeteilt
                     </span>
-                  ) : null}
+                  )}
+
+                  {resolution.status === "substitution" && (
+                    <span className={styles.statusSubstitution}>
+                      Vertretung für{" "}
+                      {getTeamMemberName(
+                        resolution.assignedTeamMemberId,
+                        teamMembers,
+                      )}
+                    </span>
+                  )}
+
+                  {resolution.status === "uncovered" && (
+                    <span className={styles.statusWarning}>
+                      Abwesend – keine Vertretung
+                    </span>
+                  )}
                 </div>
-
-                {absence ? (
-                  <div className={styles.substitution}>
-                    <span>Vertretung</span>
-
-                    <strong>
-                      {substitution
-                        ? getTeamMemberName(substitution.substituteTeamMemberId)
-                        : "Keine Vertretung eingetragen"}
-                    </strong>
-                  </div>
-                ) : null}
 
                 <div className={styles.period}>
                   <span>Zeitraum</span>
@@ -134,19 +145,16 @@ export default function RotationsPage() {
 
         <div className={styles.rotationList}>
           {deploymentRotations.map((rotation) => {
-            const absence = getRotationAbsence(rotation, absences);
-
-            const substitution = getRotationSubstitution(
+            const resolution = resolveRotation(
               rotation,
+              absences,
               substitutions,
             );
 
             return (
               <article
                 key={rotation.id}
-                className={`${styles.rotationCard} ${
-                  absence ? styles.rotationCardConflict : ""
-                }`}
+                className={getRotationCardClassName(rotation)}
               >
                 <div className={styles.week}>
                   <span>KW</span>
@@ -157,26 +165,35 @@ export default function RotationsPage() {
                 <div className={styles.person}>
                   <span>Verantwortlich</span>
 
-                  <strong>{getTeamMemberName(rotation.teamMemberId)}</strong>
+                  <strong>
+                    {getTeamMemberName(
+                      resolution.effectiveTeamMemberId,
+                      teamMembers,
+                    )}
+                  </strong>
 
-                  {absence ? (
-                    <span className={styles.warning}>
-                      In diesem Zeitraum abwesend
+                  {resolution.status === "regular" && (
+                    <span className={styles.statusRegular}>
+                      Regulär eingeteilt
                     </span>
-                  ) : null}
+                  )}
+
+                  {resolution.status === "substitution" && (
+                    <span className={styles.statusSubstitution}>
+                      Vertretung für{" "}
+                      {getTeamMemberName(
+                        resolution.assignedTeamMemberId,
+                        teamMembers,
+                      )}
+                    </span>
+                  )}
+
+                  {resolution.status === "uncovered" && (
+                    <span className={styles.statusWarning}>
+                      Abwesend – keine Vertretung
+                    </span>
+                  )}
                 </div>
-
-                {absence ? (
-                  <div className={styles.substitution}>
-                    <span>Vertretung</span>
-
-                    <strong>
-                      {substitution
-                        ? getTeamMemberName(substitution.substituteTeamMemberId)
-                        : "Keine Vertretung eingetragen"}
-                    </strong>
-                  </div>
-                ) : null}
 
                 <div className={styles.period}>
                   <span>Zeitraum</span>

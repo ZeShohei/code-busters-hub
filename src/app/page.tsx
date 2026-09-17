@@ -3,11 +3,7 @@ import Link from "next/link";
 import { absences, substitutions } from "@/features/absences/mockData";
 import { deploymentRotations } from "@/features/deploymentRotation/mockData";
 import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
-import {
-  getEffectiveRotationTeamMemberId,
-  getRotationAbsence,
-  getRotationSubstitution,
-} from "@/features/rotations/utils";
+import { resolveRotation } from "@/features/rotations/utils";
 import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
@@ -23,36 +19,12 @@ export default function Home() {
 
   const currentDeployment = getCurrentRotation(deploymentRotations);
 
-  const dispatcherAbsence = currentDispatcher
-    ? getRotationAbsence(currentDispatcher, absences)
+  const dispatcherResolution = currentDispatcher
+    ? resolveRotation(currentDispatcher, absences, substitutions)
     : undefined;
 
-  const dispatcherSubstitution = currentDispatcher
-    ? getRotationSubstitution(currentDispatcher, substitutions)
-    : undefined;
-
-  const deploymentAbsence = currentDeployment
-    ? getRotationAbsence(currentDeployment, absences)
-    : undefined;
-
-  const deploymentSubstitution = currentDeployment
-    ? getRotationSubstitution(currentDeployment, substitutions)
-    : undefined;
-
-  const effectiveDispatcherTeamMemberId = currentDispatcher
-    ? getEffectiveRotationTeamMemberId(
-        currentDispatcher,
-        absences,
-        substitutions,
-      )
-    : undefined;
-
-  const effectiveDeploymentTeamMemberId = currentDeployment
-    ? getEffectiveRotationTeamMemberId(
-        currentDeployment,
-        absences,
-        substitutions,
-      )
+  const deploymentResolution = currentDeployment
+    ? resolveRotation(currentDeployment, absences, substitutions)
     : undefined;
 
   const currentAbsences = absences.filter((absence) =>
@@ -81,22 +53,25 @@ export default function Home() {
           <span className={styles.label}>Dispatcher diese Woche</span>
 
           <strong className={styles.value}>
-            {effectiveDispatcherTeamMemberId
-              ? getTeamMemberName(effectiveDispatcherTeamMemberId, teamMembers)
+            {dispatcherResolution
+              ? getTeamMemberName(
+                  dispatcherResolution.effectiveTeamMemberId,
+                  teamMembers,
+                )
               : "Nicht eingeteilt"}
           </strong>
 
-          {dispatcherAbsence ? (
+          {dispatcherResolution?.status === "substitution" ? (
             <p className={styles.warning}>
-              {dispatcherSubstitution
-                ? `Vertretung für ${getTeamMemberName(
-                    currentDispatcher!.teamMemberId,
-                    teamMembers,
-                  )}`
-                : `${getTeamMemberName(
-                    currentDispatcher!.teamMemberId,
-                    teamMembers,
-                  )} ist abwesend – keine Vertretung eingetragen`}
+              Vertretung für{" "}
+              {getTeamMemberName(
+                dispatcherResolution.assignedTeamMemberId,
+                teamMembers,
+              )}
+            </p>
+          ) : dispatcherResolution?.status === "uncovered" ? (
+            <p className={styles.warning}>
+              Abwesend – keine Vertretung eingetragen
             </p>
           ) : (
             <p className={styles.description}>
@@ -109,22 +84,25 @@ export default function Home() {
           <span className={styles.label}>Deployment diese Woche</span>
 
           <strong className={styles.value}>
-            {effectiveDeploymentTeamMemberId
-              ? getTeamMemberName(effectiveDeploymentTeamMemberId, teamMembers)
+            {deploymentResolution
+              ? getTeamMemberName(
+                  deploymentResolution.effectiveTeamMemberId,
+                  teamMembers,
+                )
               : "Nicht eingeteilt"}
           </strong>
 
-          {deploymentAbsence ? (
+          {deploymentResolution?.status === "substitution" ? (
             <p className={styles.warning}>
-              {deploymentSubstitution
-                ? `Vertretung für ${getTeamMemberName(
-                    currentDeployment!.teamMemberId,
-                    teamMembers,
-                  )}`
-                : `${getTeamMemberName(
-                    currentDeployment!.teamMemberId,
-                    teamMembers,
-                  )} ist abwesend – keine Vertretung eingetragen`}
+              Vertretung für{" "}
+              {getTeamMemberName(
+                deploymentResolution.assignedTeamMemberId,
+                teamMembers,
+              )}
+            </p>
+          ) : deploymentResolution?.status === "uncovered" ? (
+            <p className={styles.warning}>
+              Abwesend – keine Vertretung eingetragen
             </p>
           ) : (
             <p className={styles.description}>
@@ -178,7 +156,11 @@ export default function Home() {
                 </strong>
 
                 <span>
-                  {absence.type === "vacation" ? "Urlaub" : "Abwesend"}
+                  {absence.type === "vacation"
+                    ? "Urlaub"
+                    : absence.type === "sickLeave"
+                      ? "Krankenstand"
+                      : "Abwesend"}
                 </span>
               </div>
 
