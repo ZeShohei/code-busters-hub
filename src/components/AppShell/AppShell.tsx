@@ -1,5 +1,6 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { Navigation } from "@/components/Navigation/Navigation";
 
 import styles from "./AppShell.module.css";
 
@@ -13,15 +14,7 @@ export const AppShell = ({ children }: AppShellProps) => {
       <aside className={styles.sidebar}>
         <div className={styles.logo}>Code Busters Hub</div>
 
-        <nav className={styles.navigation} aria-label="Hauptnavigation">
-          <Link href="/">Übersicht</Link>
-
-          <Link href="/team">Team</Link>
-
-          <Link href="/absences">Abwesenheiten</Link>
-
-          <Link href="/rotations">Rotationen</Link>
-        </nav>
+        <Navigation />
       </aside>
 
       <main className={styles.content}>{children}</main>
