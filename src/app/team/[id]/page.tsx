@@ -14,9 +14,10 @@ import {
   isDateInRange,
   parseDate,
 } from "@/utils/date";
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
+import { PageHeader } from "@/components/PageHeader/PageHeader";
 
 import styles from "./page.module.css";
-import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 
 interface TeamMemberPageProps {
   params: Promise<{
@@ -168,39 +169,35 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
           },
         ]}
       />
-      <header className={styles.header}>
-        <p className={styles.eyebrow}>Teammitglied</p>
-
-        <div className={styles.personHeader}>
+      <PageHeader
+        eyebrow="Teammitglied"
+        title={teamMember.displayName}
+        description={teamMember.email}
+      >
+        <div className={styles.profile}>
           <div className={styles.avatar} aria-hidden="true">
             {teamMember.firstName.charAt(0).toUpperCase()}
 
             {teamMember.lastName.charAt(0).toUpperCase()}
           </div>
 
-          <div>
-            <h1>{teamMember.displayName}</h1>
+          <div className={styles.status}>
+            <span>Status</span>
 
-            <a href={`mailto:${teamMember.email}`}>{teamMember.email}</a>
+            {currentAbsence ? (
+              <strong className={styles.statusAbsent}>
+                {currentAbsence.type === "vacation"
+                  ? "Urlaub"
+                  : currentAbsence.type === "sickLeave"
+                    ? "Krankenstand"
+                    : "Abwesend"}
+              </strong>
+            ) : (
+              <strong className={styles.statusAvailable}>Verfügbar</strong>
+            )}
           </div>
         </div>
-
-        <div className={styles.currentStatus}>
-          <span>Status</span>
-
-          {currentAbsence ? (
-            <strong className={styles.statusAbsent}>
-              {currentAbsence.type === "vacation"
-                ? "Urlaub"
-                : currentAbsence.type === "sickLeave"
-                  ? "Krankenstand"
-                  : "Abwesend"}
-            </strong>
-          ) : (
-            <strong className={styles.statusAvailable}>Verfügbar</strong>
-          )}
-        </div>
-      </header>
+      </PageHeader>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
