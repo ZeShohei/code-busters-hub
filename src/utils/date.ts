@@ -76,6 +76,13 @@ export const isSameDay = (firstDate: Date, secondDate: Date) => {
   );
 };
 
+export const isDateToday = (
+  dateString: string,
+  comparisonDate = new Date(),
+) => {
+  return isSameDay(parseDate(dateString), comparisonDate);
+};
+
 export const addDays = (date: Date, amount: number) => {
   const result = new Date(date);
 
@@ -100,10 +107,32 @@ export const getMonday = (date: Date) => {
   return result;
 };
 
+export const getSunday = (date: Date) => {
+  return addDays(getMonday(date), 6);
+};
+
 export const getWeekDays = (date = new Date()) => {
   const monday = getMonday(date);
 
-  return Array.from({ length: 5 }, (_, index) => addDays(monday, index));
+  return Array.from(
+    {
+      length: 5,
+    },
+    (_, index) => addDays(monday, index),
+  );
+};
+
+export const isDateInCurrentWeek = (
+  dateString: string,
+  comparisonDate = new Date(),
+) => {
+  const date = normalizeDate(parseDate(dateString));
+
+  const monday = getMonday(comparisonDate);
+
+  const sunday = getSunday(comparisonDate);
+
+  return date >= monday && date <= sunday;
 };
 
 export const getCurrentRotation = (
@@ -113,6 +142,41 @@ export const getCurrentRotation = (
   return rotations.find((rotation) =>
     isDateInRange(rotation.startDate, rotation.endDate, date),
   );
+};
+
+export const getNextRotation = (
+  rotations: RotationAssignment[],
+  date = new Date(),
+): RotationAssignment | undefined => {
+  const comparisonDate = normalizeDate(date);
+
+  return [...rotations]
+    .filter((rotation) => {
+      const rotationEndDate = normalizeDate(parseDate(rotation.endDate));
+
+      return rotationEndDate >= comparisonDate;
+    })
+    .sort((first, second) =>
+      first.startDate.localeCompare(second.startDate),
+    )[0];
+};
+
+export const getUpcomingRotationsInCurrentWeek = (
+  rotations: RotationAssignment[],
+  date = new Date(),
+) => {
+  const comparisonDate = normalizeDate(date);
+
+  return rotations
+    .filter((rotation) => {
+      const rotationDate = normalizeDate(parseDate(rotation.startDate));
+
+      return (
+        rotationDate >= comparisonDate &&
+        isDateInCurrentWeek(rotation.startDate, comparisonDate)
+      );
+    })
+    .sort((first, second) => first.startDate.localeCompare(second.startDate));
 };
 
 export const getCalendarWeek = (dateString: string) => {

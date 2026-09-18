@@ -29,9 +29,15 @@ import {
   getCalendarWeek,
   getCurrentRotation,
   getDateRangeStatus,
+  getNextRotation,
+  getUpcomingRotationsInCurrentWeek,
   isDateAfter,
+  isDateInCurrentWeek,
   isDateInRange,
+  isDateToday,
 } from "@/utils/date";
+
+import type { RotationAssignment, RotationResolution } from "@/types/team";
 
 import styles from "./page.module.css";
 
@@ -50,6 +56,68 @@ const getAbsenceTypeLabel = (type: "vacation" | "sickLeave" | "other") => {
 
 const toDateString = (date: Date) => {
   return date.toISOString().slice(0, 10);
+};
+
+const getDeploymentKindLabel = (rotation: RotationAssignment) => {
+  switch (rotation.deploymentKind) {
+    case "special":
+      return "Sonderdeployment";
+
+    case "rescheduled":
+      return "Verschobenes Deployment";
+
+    default:
+      return "Reguläres Deployment";
+  }
+};
+
+const getDeploymentCardLabel = (rotation?: RotationAssignment) => {
+  if (!rotation) {
+    return "Nächstes Deployment";
+  }
+
+  if (isDateToday(rotation.startDate)) {
+    return "Deployment heute";
+  }
+
+  if (isDateInCurrentWeek(rotation.startDate)) {
+    return "Deployment diese Woche";
+  }
+
+  return "Nächstes Deployment";
+};
+
+const getDeploymentDescription = (
+  rotation: RotationAssignment,
+  resolution: RotationResolution,
+  teamMembers: Parameters<typeof getTeamMemberName>[1],
+) => {
+  const dateLabel = formatDate(rotation.startDate);
+
+  const kindLabel = getDeploymentKindLabel(rotation);
+
+  if (resolution.status === "substitution") {
+    return `${dateLabel} · ${kindLabel} · Vertretung für ${getTeamMemberName(
+      resolution.assignedTeamMemberId,
+      teamMembers,
+    )}`;
+  }
+
+  if (resolution.status === "uncovered") {
+    return `${dateLabel} · ${kindLabel} · Abwesend – keine Vertretung eingetragen`;
+  }
+
+  if (rotation.deploymentKind === "rescheduled" && rotation.originalDate) {
+    return `${dateLabel} · Verschoben von ${formatDate(rotation.originalDate)}`;
+  }
+
+  if (rotation.deploymentKind === "special") {
+    return `${dateLabel} · Sonderdeployment${
+      rotation.reason ? ` · ${rotation.reason}` : ""
+    }`;
+  }
+
+  return `${dateLabel} · Reguläres Deployment`;
 };
 
 export default async function Home() {
@@ -102,17 +170,51 @@ export default async function Home() {
     }),
   ]);
 
+  /*
+   * Dispatcher bleibt weiterhin
+   * eine Wochenrotation.
+   */
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
-
-  const currentDeployment = getCurrentRotation(deploymentRotations);
 
   const dispatcherResolution = currentDispatcher
     ? resolveRotation(currentDispatcher, absences, substitutions)
     : undefined;
 
-  const deploymentResolution = currentDeployment
-    ? resolveRotation(currentDeployment, absences, substitutions)
+  /*
+   * Deployment ist jetzt ein konkreter
+   * Termin.
+   *
+   * Für die Teamkarte suchen wir deshalb
+   * das nächste Deployment ab heute.
+   */
+  const nextDeployment = getNextRotation(deploymentRotations);
+
+  const nextDeploymentResolution = nextDeployment
+    ? resolveRotation(nextDeployment, absences, substitutions)
     : undefined;
+
+  /*
+   * Für "Meine Rotation diese Woche"
+   * berücksichtigen wir Deployments,
+   * die heute oder später innerhalb
+   * dieser Woche stattfinden.
+   *
+   * Dadurch kann es auch mehrere
+   * Deployments geben, z. B. regulär
+   * plus Sonderdeployment.
+   */
+  const deploymentsThisWeek =
+    getUpcomingRotationsInCurrentWeek(deploymentRotations);
+
+  const resolvedDeploymentsThisWeek = deploymentsThisWeek.map((rotation) => ({
+    rotation,
+
+    resolution: resolveRotation(rotation, absences, substitutions),
+  }));
+
+  const myDeploymentsThisWeek = resolvedDeploymentsThisWeek.filter(
+    ({ resolution }) => resolution.effectiveTeamMemberId === currentUser.id,
+  );
 
   /*
    * Persönliche Rotation
@@ -124,8 +226,12 @@ export default async function Home() {
     personalRotations.push("Dispatcher");
   }
 
-  if (deploymentResolution?.effectiveTeamMemberId === currentUser.id) {
-    personalRotations.push("Deployment");
+  if (myDeploymentsThisWeek.length > 0) {
+    personalRotations.push(
+      myDeploymentsThisWeek.length > 1
+        ? `Deployment (${myDeploymentsThisWeek.length})`
+        : "Deployment",
+    );
   }
 
   const personalRotationDescription = (() => {
@@ -133,30 +239,49 @@ export default async function Home() {
       dispatcherResolution?.status === "substitution" &&
       dispatcherResolution.effectiveTeamMemberId === currentUser.id;
 
-    const substitutionForDeployment =
-      deploymentResolution?.status === "substitution" &&
-      deploymentResolution.effectiveTeamMemberId === currentUser.id;
+    const deploymentSubstitutions = myDeploymentsThisWeek.filter(
+      ({ resolution }) => resolution.status === "substitution",
+    );
 
-    if (substitutionForDispatcher && substitutionForDeployment) {
-      return "Du übernimmst diese Woche beide Rotationen als Vertretung.";
+    const deploymentDates = myDeploymentsThisWeek
+      .map(({ rotation }) => formatDate(rotation.startDate))
+      .join(", ");
+
+    if (substitutionForDispatcher && deploymentSubstitutions.length > 0) {
+      return `Du vertrittst diese Woche beim Dispatcher und hast zusätzlich Deployment am ${deploymentDates}.`;
     }
 
     if (substitutionForDispatcher) {
       return `Du vertrittst ${getTeamMemberName(
         dispatcherResolution.assignedTeamMemberId,
         teamMembers,
-      )} als Dispatcher.`;
+      )} diese Woche als Dispatcher.`;
     }
 
-    if (substitutionForDeployment) {
+    if (deploymentSubstitutions.length > 0) {
+      const firstSubstitution = deploymentSubstitutions[0];
+
       return `Du vertrittst ${getTeamMemberName(
-        deploymentResolution.assignedTeamMemberId,
+        firstSubstitution.resolution.assignedTeamMemberId,
         teamMembers,
-      )} im Deployment.`;
+      )} beim Deployment am ${formatDate(
+        firstSubstitution.rotation.startDate,
+      )}.`;
     }
 
-    if (personalRotations.length > 0) {
-      return "Du bist diese Woche regulär eingeteilt.";
+    if (
+      dispatcherResolution?.effectiveTeamMemberId === currentUser.id &&
+      myDeploymentsThisWeek.length > 0
+    ) {
+      return `Du bist diese Woche als Dispatcher eingeteilt und hast Deployment am ${deploymentDates}.`;
+    }
+
+    if (myDeploymentsThisWeek.length > 0) {
+      return `Du bist für Deployment am ${deploymentDates} eingeteilt.`;
+    }
+
+    if (dispatcherResolution?.effectiveTeamMemberId === currentUser.id) {
+      return "Du bist diese Woche regulär als Dispatcher eingeteilt.";
     }
 
     return "Du bist diese Woche in keiner Rotation eingeteilt.";
@@ -214,7 +339,11 @@ export default async function Home() {
 
   /*
    * Handlungsbedarf:
-   * unbesetzte aktuelle oder kommende Rotationen
+   * unbesetzte aktuelle oder kommende
+   * Rotationen.
+   *
+   * Dispatcher = Zeitraum
+   * Deployment = einzelner Termin
    */
 
   const uncoveredRotationItems: ActionRequiredItem[] = [
@@ -242,25 +371,38 @@ export default async function Home() {
         teamMembers,
       );
 
-      const rotationLabel =
-        rotation.type === "dispatcher" ? "Dispatcher" : "Deployment";
+      const isDeployment = rotation.type === "deployment";
+
+      const rotationLabel = isDeployment
+        ? getDeploymentKindLabel(rotation)
+        : "Dispatcher";
 
       return {
         id: `rotation-${rotation.type}-${rotation.id}`,
+
         title: `${rotationLabel} in KW ${getCalendarWeek(
           rotation.startDate,
         )} unbesetzt`,
-        description: `${assignedName} ist in diesem Zeitraum abwesend und es ist keine Vertretung eingetragen.`,
-        meta: `${formatDate(
-          rotation.startDate,
-        )} – ${formatDate(rotation.endDate)}`,
+
+        description: isDeployment
+          ? `${assignedName} ist am Deployment-Termin abwesend und es ist keine Vertretung eingetragen.`
+          : `${assignedName} ist in diesem Zeitraum abwesend und es ist keine Vertretung eingetragen.`,
+
+        meta: isDeployment
+          ? formatDate(rotation.startDate)
+          : `${formatDate(rotation.startDate)} – ${formatDate(
+              rotation.endDate,
+            )}`,
+
         href: "/absences?status=upcoming",
+
         actionLabel: "Abwesenheiten ansehen",
       };
     });
 
   /*
-   * Urlaubsübergaben für den aktuellen User
+   * Urlaubsübergaben für den
+   * aktuellen User.
    */
 
   const relevantVacationRows = vacationRows.filter((absence) => {
@@ -294,11 +436,16 @@ export default async function Home() {
       if (!absence.substitution && status === "upcoming") {
         items.push({
           id: `vacation-substitute-${absence.id}`,
+
           title: "Vertretung für deinen Urlaub fehlt",
+
           description:
             "Für deinen kommenden Urlaub ist noch keine Vertretung eingetragen.",
+
           meta: `${formatDate(startDate)} – ${formatDate(endDate)}`,
+
           href: `/absences/${absence.id}/edit`,
+
           actionLabel: "Vertretung eintragen",
         });
       }
@@ -306,10 +453,15 @@ export default async function Home() {
       if (absence.substitution && !absence.vacationHandover) {
         items.push({
           id: `vacation-handover-${absence.id}`,
+
           title: "Urlaubsübergabe fehlt",
+
           description: `${absence.substitution.substituteTeamMember.displayName} ist als Vertretung eingetragen, aber es wurde noch keine Übergabe erstellt.`,
+
           meta: `${formatDate(startDate)} – ${formatDate(endDate)}`,
+
           href: `/absences/${absence.id}/handover`,
+
           actionLabel: "Übergabe erstellen",
         });
       }
@@ -323,8 +475,8 @@ export default async function Home() {
   ];
 
   /*
-   * Übergaben, bei denen der aktuelle User
-   * als Vertretung eingetragen ist.
+   * Übergaben, bei denen der aktuelle
+   * User als Vertretung eingetragen ist.
    */
 
   const vacationHandovers: VacationHandoverDashboardItem[] =
@@ -336,7 +488,15 @@ export default async function Home() {
       .map((absence) => {
         const handover = absence.vacationHandover;
 
-        const firstTaskWithNextStep = handover?.tasks.find((task) =>
+        /*
+         * Für den nächsten Schritt auf dem
+         * Dashboard verwenden wir nur
+         * unerledigte Aufgaben.
+         */
+        const openTasks =
+          handover?.tasks.filter((task) => !task.completed) ?? [];
+
+        const firstTaskWithNextStep = openTasks.find((task) =>
           task.nextSteps?.trim(),
         );
 
@@ -351,7 +511,7 @@ export default async function Home() {
 
           hasHandover: Boolean(handover),
 
-          taskCount: handover?.tasks.length ?? 0,
+          taskCount: openTasks.length,
 
           emergencyContact: handover?.emergencyContact ?? undefined,
 
@@ -392,7 +552,9 @@ export default async function Home() {
             status={
               personalRotations.length > 0 &&
               (dispatcherResolution?.status === "substitution" ||
-                deploymentResolution?.status === "substitution")
+                myDeploymentsThisWeek.some(
+                  ({ resolution }) => resolution.status === "substitution",
+                ))
                 ? "warning"
                 : "default"
             }
@@ -456,7 +618,7 @@ export default async function Home() {
           <div>
             <h2>Teamstatus</h2>
 
-            <p>Die wichtigsten Informationen für diese Woche.</p>
+            <p>Die wichtigsten Informationen für das Team.</p>
           </div>
         </div>
 
@@ -495,35 +657,29 @@ export default async function Home() {
           />
 
           <DashboardCard
-            label="Deployment diese Woche"
+            label={getDeploymentCardLabel(nextDeployment)}
             value={
-              deploymentResolution
+              nextDeploymentResolution
                 ? getTeamMemberName(
-                    deploymentResolution.effectiveTeamMemberId,
+                    nextDeploymentResolution.effectiveTeamMemberId,
                     teamMembers,
                   )
-                : "Nicht eingeteilt"
+                : "Kein Deployment geplant"
             }
             status={
-              deploymentResolution?.status === "substitution" ||
-              deploymentResolution?.status === "uncovered"
+              nextDeploymentResolution?.status === "substitution" ||
+              nextDeploymentResolution?.status === "uncovered"
                 ? "warning"
                 : "default"
             }
             description={
-              deploymentResolution?.status === "substitution" ? (
-                <>
-                  Vertretung für{" "}
-                  {getTeamMemberName(
-                    deploymentResolution.assignedTeamMemberId,
+              nextDeployment && nextDeploymentResolution
+                ? getDeploymentDescription(
+                    nextDeployment,
+                    nextDeploymentResolution,
                     teamMembers,
-                  )}
-                </>
-              ) : deploymentResolution?.status === "uncovered" ? (
-                <>Abwesend – keine Vertretung eingetragen</>
-              ) : (
-                <>Zuständig für die aktuelle Deployment-Rotation.</>
-              )
+                  )
+                : "Im aktuellen Planungszeitraum ist kein weiteres Deployment eingetragen."
             }
           />
 
