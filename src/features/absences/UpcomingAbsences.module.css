@@ -18,18 +18,23 @@
 }
 
 .header h2 {
+    color: var(--color-text-primary);
+
     font-size: 1.25rem;
 }
 
 .header p {
-    color: #666;
+    color: var(--color-text-secondary);
+
     font-size: 0.875rem;
 }
 
 .link {
-    color: #1d4ed8;
+    color: var(--color-text-brand);
+
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
+
     text-decoration: none;
 }
 
@@ -38,10 +43,10 @@
 }
 
 .link:focus-visible {
-    outline: 0.125rem solid #2563eb;
+    outline: 0.1875rem solid var(--color-focus);
     outline-offset: 0.125rem;
 
-    border-radius: 0.125rem;
+    border-radius: var(--radius-sm);
 }
 
 .list {
@@ -61,10 +66,26 @@
 
     padding: 1rem 1.25rem;
 
-    border: 1px solid #e5e5e5;
-    border-radius: 0.75rem;
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
 
-    background: #fff;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    box-shadow: var(--shadow-sm);
+
+    transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease,
+            transform 0.15s ease;
+}
+
+.card:hover {
+    transform: translateY(-0.0625rem);
+
+    border-color: var(--color-border-default);
+
+    box-shadow: var(--shadow-md);
 }
 
 .person,
@@ -76,17 +97,21 @@
 
 .person span,
 .period span {
-    color: #666;
+    color: var(--color-text-secondary);
+
     font-size: 0.75rem;
 }
 
 .person strong,
 .period strong {
+    color: var(--color-text-primary);
+
     font-size: 0.875rem;
 }
 
 .empty {
-    color: #888;
+    color: var(--color-text-muted);
+
     font-size: 0.875rem;
 }
 

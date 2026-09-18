@@ -10,15 +10,29 @@
     minmax(0, 1fr)
     auto
     auto;
+
     align-items: center;
     gap: 1rem;
 
     padding: 1rem;
 
-    border: 1px solid #d9d9d9;
-    border-radius: 0.75rem;
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
 
-    background: #ffffff;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    box-shadow: var(--shadow-sm);
+
+    transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease;
+}
+
+.item:hover {
+    border-color: var(--color-border-default);
+
+    box-shadow: var(--shadow-md);
 }
 
 .person {
@@ -29,10 +43,15 @@
     min-width: 0;
 }
 
+.person strong {
+    color: var(--color-text-primary);
+}
+
 .email {
     overflow: hidden;
 
-    color: #667085;
+    color: var(--color-text-secondary);
+
     font-size: 0.875rem;
 
     text-overflow: ellipsis;
@@ -51,54 +70,67 @@
 .activeBadge,
 .inactiveBadge {
     display: inline-flex;
+    align-items: center;
 
     width: fit-content;
+
     padding: 0.25rem 0.5rem;
 
-    border-radius: 999rem;
+    border-radius: var(--radius-round);
 
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .adminBadge {
-    background: #eef4ff;
-    color: #3538cd;
+    background: var(--color-background-info);
+    color: var(--color-text-info);
 }
 
 .memberBadge {
-    background: #f2f4f7;
-    color: #344054;
+    background: var(--color-background-muted);
+    color: var(--color-text-secondary);
 }
 
 .activeBadge {
-    background: #ecfdf3;
-    color: #027a48;
+    background: var(--color-background-success);
+    color: var(--color-text-success);
 }
 
 .inactiveBadge {
-    background: #f2f4f7;
-    color: #667085;
+    background: var(--color-background-muted);
+    color: var(--color-text-muted);
 }
 
 .editLink {
     padding: 0.5rem 0.75rem;
 
-    border: 1px solid #d0d5dd;
-    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
 
-    color: inherit;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
     font-size: 0.875rem;
     font-weight: 600;
+
     text-decoration: none;
+
+    transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
 }
 
 .editLink:hover {
-    background: #f6f6f6;
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-background-primary-subtle);
+    color: var(--color-text-brand);
 }
 
 .editLink:focus-visible {
-    outline: 0.125rem solid #111111;
+    outline: 0.1875rem solid var(--color-focus);
     outline-offset: 0.125rem;
 }
 

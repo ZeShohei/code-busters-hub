@@ -2,11 +2,18 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+
     max-width: 45rem;
+
     padding: 1.5rem;
-    border: 1px solid #d9d9d9;
-    border-radius: 0.75rem;
-    background: #ffffff;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    box-shadow: var(--shadow-sm);
 }
 
 .field {
@@ -16,23 +23,49 @@
 }
 
 .field label {
+    color: var(--color-text-primary);
+
     font-weight: 600;
 }
 
 .field input,
 .field select {
     width: 100%;
+    min-height: 3rem;
+
     padding: 0.75rem;
-    border: 1px solid #b8b8b8;
-    border-radius: 0.5rem;
-    background: #ffffff;
+
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    caret-color: var(--color-brand-primary);
+
     font: inherit;
+}
+
+.field input::placeholder {
+    color: var(--color-text-placeholder);
+
+    opacity: 1;
+}
+
+.field input:hover,
+.field select:hover {
+    border-color: var(--color-border-strong);
 }
 
 .field input:focus,
 .field select:focus {
-    outline: 0.125rem solid #111111;
-    outline-offset: 0.125rem;
+    border-color: var(--color-brand-primary);
+
+    outline: none;
+
+    box-shadow:
+            0 0 0 0.1875rem
+            rgb(242 90 29 / 20%);
 }
 
 .dateFields {
@@ -45,6 +78,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+
     padding-top: 0.5rem;
 }
 
@@ -52,50 +86,86 @@
 .secondaryButton,
 .deleteButton {
     padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
+
+    border-radius: var(--radius-md);
+
     font: inherit;
-    font-weight: 600;
+    font-weight: 700;
+
     cursor: pointer;
+
+    transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
 }
 
 .primaryButton {
-    border: 1px solid #111111;
-    background: #111111;
+    border: 0.0625rem solid var(--color-brand-primary);
+
+    background: var(--color-brand-primary);
     color: #ffffff;
 }
 
+.primaryButton:hover:not(:disabled) {
+    border-color: var(--color-brand-primary-hover);
+
+    background: var(--color-brand-primary-hover);
+}
+
 .secondaryButton {
-    border: 1px solid #b8b8b8;
-    background: #ffffff;
-    color: #111111;
+    border: 0.0625rem solid var(--color-border-default);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+}
+
+.secondaryButton:hover:not(:disabled) {
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-background-primary-subtle);
+    color: var(--color-text-brand);
 }
 
 .deleteButton {
     margin-left: auto;
-    border: 1px solid #b42318;
-    background: #ffffff;
-    color: #b42318;
+
+    border: 0.0625rem solid var(--color-text-error);
+
+    background: var(--color-background-error);
+    color: var(--color-text-error);
+}
+
+.deleteButton:hover:not(:disabled) {
+    border-color: var(--color-border-error);
 }
 
 .primaryButton:disabled,
 .secondaryButton:disabled,
 .deleteButton:disabled {
     cursor: not-allowed;
+
     opacity: 0.6;
 }
 
 .error {
     margin: 0;
+
     padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    background: #fff1f0;
-    color: #b42318;
+
+    border: 0.0625rem solid var(--color-border-error);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-error);
+    color: var(--color-text-error);
 }
 
 .hint {
     margin: 0;
+
+    color: var(--color-text-secondary);
+
     font-size: 0.875rem;
-    color: #667085;
 }
 
 @media (max-width: 40rem) {
