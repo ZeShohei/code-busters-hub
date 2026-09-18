@@ -33,17 +33,17 @@ export const getRotationAbsence = (
 
 export const getRotationSubstitution = (
   rotation: RotationAssignment,
+  absences: Absence[],
   substitutions: Substitution[],
 ) => {
+  const absence = getRotationAbsence(rotation, absences);
+
+  if (!absence) {
+    return undefined;
+  }
+
   return substitutions.find(
-    (substitution) =>
-      substitution.teamMemberId === rotation.teamMemberId &&
-      rangesOverlap(
-        rotation.startDate,
-        rotation.endDate,
-        substitution.startDate,
-        substitution.endDate,
-      ),
+    (substitution) => substitution.absenceId === absence.id,
   );
 };
 
@@ -58,7 +58,9 @@ export const getEffectiveRotationTeamMemberId = (
     return rotation.teamMemberId;
   }
 
-  const substitution = getRotationSubstitution(rotation, substitutions);
+  const substitution = substitutions.find(
+    (item) => item.absenceId === absence.id,
+  );
 
   return substitution?.substituteTeamMemberId ?? rotation.teamMemberId;
 };
@@ -78,12 +80,23 @@ export const resolveRotation = (
     };
   }
 
-  const substitution = getRotationSubstitution(rotation, substitutions);
+  const substitution = substitutions.find(
+    (item) => item.absenceId === absence.id,
+  );
 
   if (!substitution) {
     return {
       status: "uncovered",
       assignedTeamMemberId: rotation.teamMemberId,
+
+      /*
+       * Wir behalten hier aus Kompatibilitätsgründen
+       * die ursprünglich eingeteilte Person.
+       *
+       * Der Status "uncovered" ist die Information,
+       * dass tatsächlich niemand die Rotation
+       * übernommen hat.
+       */
       effectiveTeamMemberId: rotation.teamMemberId,
     };
   }
@@ -152,21 +165,26 @@ export const generateRotations = ({
 
   const firstMonday = getMonday(parseDate(startDate));
 
-  return Array.from({ length: numberOfWeeks }, (_, weekIndex) => {
-    const rotationStartDate = addDays(firstMonday, weekIndex * 7);
+  return Array.from(
+    {
+      length: numberOfWeeks,
+    },
+    (_, weekIndex) => {
+      const rotationStartDate = addDays(firstMonday, weekIndex * 7);
 
-    const rotationEndDate = addDays(rotationStartDate, 6);
+      const rotationEndDate = addDays(rotationStartDate, 6);
 
-    const teamMemberIndex = (startIndex + weekIndex) % teamMembers.length;
+      const teamMemberIndex = (startIndex + weekIndex) % teamMembers.length;
 
-    const teamMember = teamMembers[teamMemberIndex];
+      const teamMember = teamMembers[teamMemberIndex];
 
-    return {
-      id: `${type}-${weekIndex + 1}`,
-      teamMemberId: teamMember.id,
-      startDate: formatDate(rotationStartDate),
-      endDate: formatDate(rotationEndDate),
-      type,
-    };
-  });
+      return {
+        id: `${type}-${weekIndex + 1}`,
+        teamMemberId: teamMember.id,
+        startDate: formatDate(rotationStartDate),
+        endDate: formatDate(rotationEndDate),
+        type,
+      };
+    },
+  );
 };

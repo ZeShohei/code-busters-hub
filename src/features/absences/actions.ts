@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  getAvailableSubstitutesForAbsence,
+  toDatabaseDate,
+  validateAbsenceBusinessRules,
+  validateAbsenceInput,
+} from "@/features/absences/absenceRules";
+
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -40,10 +47,6 @@ interface EditableOwnAbsence {
   substituteTeamMemberId: string;
 }
 
-const toDatabaseDate = (value: string) => {
-  return new Date(`${value}T00:00:00.000Z`);
-};
-
 const toDateInputValue = (value: Date) => {
   return value.toISOString().slice(0, 10);
 };
@@ -76,135 +79,6 @@ const getAuthenticatedUser = async () => {
   return teamMember;
 };
 
-const validateInput = (input: OwnAbsenceInput): string | undefined => {
-  if (!input.startDate || !input.endDate) {
-    return "Bitte Start- und Enddatum auswählen.";
-  }
-
-  if (input.endDate < input.startDate) {
-    return "Das Enddatum darf nicht vor dem Startdatum liegen.";
-  }
-
-  if (!["vacation", "sickLeave", "other"].includes(input.type)) {
-    return "Die ausgewählte Abwesenheitsart ist ungültig.";
-  }
-
-  return undefined;
-};
-
-const validateBusinessRules = async (
-  teamMemberId: string,
-  input: OwnAbsenceInput,
-  excludeAbsenceId?: string,
-): Promise<string | undefined> => {
-  const startDate = toDatabaseDate(input.startDate);
-  const endDate = toDatabaseDate(input.endDate);
-
-  const overlappingAbsence = await prisma.absence.findFirst({
-    where: {
-      teamMemberId,
-
-      ...(excludeAbsenceId
-        ? {
-            id: {
-              not: excludeAbsenceId,
-            },
-          }
-        : {}),
-
-      startDate: {
-        lte: endDate,
-      },
-
-      endDate: {
-        gte: startDate,
-      },
-    },
-  });
-
-  if (overlappingAbsence) {
-    return "Für diesen Zeitraum besteht bereits eine Abwesenheit.";
-  }
-
-  if (!input.substituteTeamMemberId) {
-    return undefined;
-  }
-
-  if (input.substituteTeamMemberId === teamMemberId) {
-    return "Du kannst dich nicht selbst als Vertretung auswählen.";
-  }
-
-  const substitute = await prisma.teamMember.findUnique({
-    where: {
-      id: input.substituteTeamMemberId,
-    },
-  });
-
-  if (!substitute) {
-    return "Die ausgewählte Vertretung existiert nicht.";
-  }
-
-  if (!substitute.active) {
-    return `${substitute.displayName} ist deaktiviert und kann nicht als Vertretung ausgewählt werden.`;
-  }
-
-  const substituteAbsence = await prisma.absence.findFirst({
-    where: {
-      teamMemberId: substitute.id,
-
-      startDate: {
-        lte: endDate,
-      },
-
-      endDate: {
-        gte: startDate,
-      },
-    },
-  });
-
-  if (substituteAbsence) {
-    return `${substitute.displayName} ist in diesem Zeitraum selbst abwesend.`;
-  }
-
-  const substitutionConflict = await prisma.substitution.findFirst({
-    where: {
-      substituteTeamMemberId: substitute.id,
-
-      ...(excludeAbsenceId
-        ? {
-            absenceId: {
-              not: excludeAbsenceId,
-            },
-          }
-        : {}),
-
-      absence: {
-        startDate: {
-          lte: endDate,
-        },
-
-        endDate: {
-          gte: startDate,
-        },
-      },
-    },
-
-    include: {
-      absence: {
-        include: {
-          teamMember: true,
-        },
-      },
-    },
-  });
-
-  if (substitutionConflict) {
-    return `${substitute.displayName} vertritt in diesem Zeitraum bereits ${substitutionConflict.absence.teamMember.displayName}.`;
-  }
-
-  return undefined;
-};
-
 const revalidateAbsencePages = (absenceId?: string) => {
   revalidatePath("/");
   revalidatePath("/team");
@@ -229,10 +103,6 @@ export const getOwnAvailableSubstitutes = async (
     return [];
   }
 
-  if (!input.startDate || !input.endDate || input.endDate < input.startDate) {
-    return [];
-  }
-
   if (input.absenceId) {
     const ownAbsence = await prisma.absence.findFirst({
       where: {
@@ -246,88 +116,12 @@ export const getOwnAvailableSubstitutes = async (
     }
   }
 
-  const startDate = toDatabaseDate(input.startDate);
-  const endDate = toDatabaseDate(input.endDate);
-
-  const candidates = await prisma.teamMember.findMany({
-    where: {
-      active: true,
-
-      id: {
-        not: currentUser.id,
-      },
-    },
-
-    orderBy: {
-      displayName: "asc",
-    },
+  return getAvailableSubstitutesForAbsence({
+    teamMemberId: currentUser.id,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    currentAbsenceId: input.absenceId,
   });
-
-  return Promise.all(
-    candidates.map(async (candidate): Promise<SubstituteAvailability> => {
-      const absence = await prisma.absence.findFirst({
-        where: {
-          teamMemberId: candidate.id,
-
-          startDate: {
-            lte: endDate,
-          },
-
-          endDate: {
-            gte: startDate,
-          },
-        },
-      });
-
-      if (absence) {
-        return {
-          id: candidate.id,
-          displayName: candidate.displayName,
-          available: false,
-          reason: "selbst abwesend",
-        };
-      }
-
-      const substitutionConflict = await prisma.substitution.findFirst({
-        where: {
-          substituteTeamMemberId: candidate.id,
-
-          ...(input.absenceId
-            ? {
-                absenceId: {
-                  not: input.absenceId,
-                },
-              }
-            : {}),
-
-          absence: {
-            startDate: {
-              lte: endDate,
-            },
-
-            endDate: {
-              gte: startDate,
-            },
-          },
-        },
-      });
-
-      if (substitutionConflict) {
-        return {
-          id: candidate.id,
-          displayName: candidate.displayName,
-          available: false,
-          reason: "bereits als Vertretung eingetragen",
-        };
-      }
-
-      return {
-        id: candidate.id,
-        displayName: candidate.displayName,
-        available: true,
-      };
-    }),
-  );
 };
 
 export const getOwnAbsenceForEdit = async (
@@ -379,7 +173,12 @@ export const createOwnAbsence = async (
     };
   }
 
-  const validationError = validateInput(input);
+  const ruleInput = {
+    ...input,
+    teamMemberId: currentUser.id,
+  };
+
+  const validationError = validateAbsenceInput(ruleInput);
 
   if (validationError) {
     return {
@@ -388,7 +187,7 @@ export const createOwnAbsence = async (
     };
   }
 
-  const businessRuleError = await validateBusinessRules(currentUser.id, input);
+  const businessRuleError = await validateAbsenceBusinessRules(ruleInput);
 
   if (businessRuleError) {
     return {
@@ -412,6 +211,7 @@ export const createOwnAbsence = async (
         await transaction.substitution.create({
           data: {
             absenceId: absence.id,
+
             substituteTeamMemberId: input.substituteTeamMemberId,
           },
         });
@@ -468,7 +268,12 @@ export const updateOwnAbsence = async (
     };
   }
 
-  const validationError = validateInput(input);
+  const ruleInput = {
+    ...input,
+    teamMemberId: currentUser.id,
+  };
+
+  const validationError = validateAbsenceInput(ruleInput);
 
   if (validationError) {
     return {
@@ -477,9 +282,8 @@ export const updateOwnAbsence = async (
     };
   }
 
-  const businessRuleError = await validateBusinessRules(
-    currentUser.id,
-    input,
+  const businessRuleError = await validateAbsenceBusinessRules(
+    ruleInput,
     absenceId,
   );
 
@@ -504,17 +308,25 @@ export const updateOwnAbsence = async (
         },
       });
 
-      await transaction.substitution.deleteMany({
-        where: {
-          absenceId,
-        },
-      });
-
       if (input.substituteTeamMemberId) {
-        await transaction.substitution.create({
-          data: {
+        await transaction.substitution.upsert({
+          where: {
+            absenceId,
+          },
+
+          update: {
+            substituteTeamMemberId: input.substituteTeamMemberId,
+          },
+
+          create: {
             absenceId,
             substituteTeamMemberId: input.substituteTeamMemberId,
+          },
+        });
+      } else {
+        await transaction.substitution.deleteMany({
+          where: {
+            absenceId,
           },
         });
       }
