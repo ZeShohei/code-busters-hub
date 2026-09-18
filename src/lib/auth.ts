@@ -1,36 +1,25 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
+import { getCurrentSession } from "@/lib/session";
 
 export interface CurrentUser {
   id: string;
   email: string;
   displayName: string;
+  username: string;
   role: "admin" | "member";
 }
 
-/*
- * Temporärer lokaler Benutzer.
- *
- * Später wird die Identität aus Microsoft Entra ID /
- * Microsoft Teams Auth übernommen.
- */
-const LOCAL_USER_EMAIL = "denis.fejzic@example.com";
-
 export const getCurrentUser = async (): Promise<CurrentUser | null> => {
-  const teamMember = await prisma.teamMember.findUnique({
-    where: {
-      email: LOCAL_USER_EMAIL,
-    },
-    select: {
-      id: true,
-      email: true,
-      displayName: true,
-      role: true,
-    },
-  });
+  const session = await getCurrentSession();
 
-  if (!teamMember) {
+  if (!session) {
+    return null;
+  }
+
+  const { teamMember } = session;
+
+  if (!teamMember.username) {
     return null;
   }
 
@@ -38,6 +27,7 @@ export const getCurrentUser = async (): Promise<CurrentUser | null> => {
     id: teamMember.id,
     email: teamMember.email,
     displayName: teamMember.displayName,
+    username: teamMember.username,
     role: teamMember.role,
   };
 };

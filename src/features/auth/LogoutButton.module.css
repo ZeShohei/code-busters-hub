@@ -1,0 +1,25 @@
+.button {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+
+    border: 1px solid #d0d5dd;
+    border-radius: 0.5rem;
+
+    background: transparent;
+    color: inherit;
+
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.button:hover {
+    background: #f6f6f6;
+}
+
+.button:focus-visible {
+    outline: 0.125rem solid currentColor;
+    outline-offset: 0.125rem;
+}

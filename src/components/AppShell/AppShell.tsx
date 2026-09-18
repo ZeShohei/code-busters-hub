@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Navigation } from "@/components/Navigation/Navigation";
 
+import { LogoutButton } from "@/features/auth/LogoutButton";
+
 import { getCurrentUser } from "@/lib/auth";
 
 import styles from "./AppShell.module.css";
@@ -21,6 +23,8 @@ export const AppShell = async ({ children }: AppShellProps) => {
         <div className={styles.logo}>Code Busters Hub</div>
 
         <Navigation isAdmin={isAdmin} />
+
+        {currentUser ? <LogoutButton /> : null}
       </aside>
 
       <main className={styles.content}>{children}</main>

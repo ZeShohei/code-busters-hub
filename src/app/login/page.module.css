@@ -1,0 +1,53 @@
+.page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 70vh;
+    padding: 2rem;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+
+    width: 100%;
+    max-width: 28rem;
+
+    padding: 2rem;
+
+    border: 1px solid #d9d9d9;
+    border-radius: 1rem;
+
+    background: #ffffff;
+
+    box-shadow:
+            0 1rem 3rem
+            rgb(0 0 0 / 8%);
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.logo {
+    width: fit-content;
+
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.header h1 {
+    margin: 0;
+
+    font-size: 1.75rem;
+}
+
+.header p {
+    margin: 0;
+
+    color: #667085;
+}
