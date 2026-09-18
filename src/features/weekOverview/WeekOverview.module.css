@@ -18,11 +18,16 @@
 }
 
 .header h2 {
+    color:
+            var(--color-text-primary);
+
     font-size: 1.25rem;
 }
 
 .header p {
-    color: #666;
+    color:
+            var(--color-text-secondary);
+
     font-size: 0.875rem;
 }
 
@@ -37,11 +42,15 @@
 
     padding: 0.5rem 0.875rem;
 
-    border: 1px solid #d4d4d4;
-    border-radius: 0.5rem;
+    border: 0.0625rem solid
+    var(--color-border-default);
+    border-radius: var(--radius-md);
 
-    color: #171717;
-    background: #fff;
+    background:
+            var(--color-background-surface);
+
+    color:
+            var(--color-text-primary);
 
     font: inherit;
     font-size: 0.8125rem;
@@ -50,23 +59,39 @@
     cursor: pointer;
 
     transition:
-            background 0.2s ease,
-            border-color 0.2s ease;
+            background 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease;
 }
 
 .navigationButton:hover:not(:disabled) {
-    background: #f5f5f5;
-    border-color: #a3a3a3;
+    border-color:
+            var(--color-brand-primary);
+
+    background:
+            var(--color-background-primary-subtle);
+
+    color:
+            var(--color-text-brand);
 }
 
 .navigationButton:focus-visible {
-    outline: 0.125rem solid #2563eb;
+    outline:
+            0.1875rem solid
+            var(--color-focus);
+
     outline-offset: 0.125rem;
 }
 
 .navigationButton:disabled {
-    color: #a3a3a3;
-    background: #f5f5f5;
+    border-color:
+            var(--color-border-subtle);
+
+    background:
+            var(--color-background-disabled);
+
+    color:
+            var(--color-text-disabled);
 
     cursor: default;
 }
@@ -85,18 +110,31 @@
 
     padding: 1rem 1.25rem;
 
-    border: 1px solid #e5e5e5;
-    border-radius: 0.75rem;
+    border: 0.0625rem solid
+    var(--color-border-subtle);
+    border-radius: var(--radius-lg);
 
-    background: #fff;
+    background:
+            var(--color-background-surface);
+
+    color:
+            var(--color-text-primary);
+
+    box-shadow:
+            var(--shadow-sm);
 }
 
-.rotation span {
-    color: #666;
+.rotation > span {
+    color:
+            var(--color-text-secondary);
+
     font-size: 0.75rem;
 }
 
 .rotation strong {
+    color:
+            var(--color-text-primary);
+
     font-size: 1rem;
 }
 
@@ -116,14 +154,35 @@
 
     overflow: hidden;
 
-    border: 1px solid #e5e5e5;
-    border-radius: 0.75rem;
+    border: 0.0625rem solid
+    var(--color-border-subtle);
+    border-radius: var(--radius-lg);
 
-    background: #fff;
+    background:
+            var(--color-background-surface);
+
+    color:
+            var(--color-text-primary);
+
+    box-shadow:
+            var(--shadow-sm);
+
+    transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease;
+}
+
+.day:hover {
+    border-color:
+            var(--color-border-default);
+
+    box-shadow:
+            var(--shadow-md);
 }
 
 .today {
-    border-color: #2563eb;
+    border-color:
+            var(--color-brand-primary);
 }
 
 .dayHeader {
@@ -134,19 +193,34 @@
 
     padding: 0.75rem 1rem;
 
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 0.0625rem solid
+    var(--color-border-subtle);
+
+    background:
+            var(--color-background-surface);
 }
 
 .today .dayHeader {
-    background: #eff6ff;
+    background:
+            var(--color-background-primary-subtle);
+}
+
+.today .dayHeader strong {
+    color:
+            var(--color-text-brand);
 }
 
 .dayHeader strong {
+    color:
+            var(--color-text-primary);
+
     text-transform: capitalize;
 }
 
 .dayHeader span {
-    color: #666;
+    color:
+            var(--color-text-secondary);
+
     font-size: 0.75rem;
 }
 
@@ -160,7 +234,9 @@
 }
 
 .noAbsences {
-    color: #888;
+    color:
+            var(--color-text-muted);
+
     font-size: 0.75rem;
 }
 
@@ -171,13 +247,22 @@
 
     padding: 0.625rem 0.75rem;
 
-    border-radius: 0.5rem;
+    border: 0.0625rem solid
+    var(--color-border-subtle);
+    border-radius: var(--radius-md);
 
-    background: #f5f5f5;
+    background:
+            var(--color-background-subtle);
+
+    color:
+            var(--color-text-primary);
 }
 
 .absence strong {
     overflow: hidden;
+
+    color:
+            var(--color-text-primary);
 
     font-size: 0.8125rem;
 
@@ -186,7 +271,9 @@
 }
 
 .absence span {
-    color: #666;
+    color:
+            var(--color-text-secondary);
+
     font-size: 0.75rem;
 }
 
@@ -205,11 +292,13 @@
 @media (max-width: 48rem) {
     .navigation {
         width: 100%;
+
         flex-wrap: wrap;
     }
 
     .navigationButton {
         flex: 1;
+
         min-width: 8rem;
     }
 

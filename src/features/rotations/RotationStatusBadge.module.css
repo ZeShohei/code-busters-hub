@@ -2,26 +2,32 @@
 .substitution,
 .uncovered {
     display: inline-flex;
+    align-items: center;
+
     width: fit-content;
+
     padding: 0.25rem 0.5rem;
-    border-radius: 999rem;
+
+    border-radius: var(--radius-round);
+
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .regular {
-    background: #ecfdf3;
-    color: #027a48;
+    background: var(--color-background-success);
+    color: var(--color-text-success);
 }
 
 .substitution {
-    background: #fffaeb;
-    color: #b54708;
+    background: var(--color-background-warning);
+    color: var(--color-text-warning);
 }
 
 .uncovered {
-    background: #fff1f0;
-    color: #b42318;
+    background: var(--color-background-error);
+    color: var(--color-text-error);
 }
 
 .substitutionWrapper {
@@ -32,5 +38,7 @@
 }
 
 .name {
+    color: var(--color-text-secondary);
+
     font-size: 0.875rem;
 }
