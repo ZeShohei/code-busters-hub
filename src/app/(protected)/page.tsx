@@ -29,6 +29,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 import {
+  addWeeks,
   formatDate,
   getCalendarWeek,
   getCurrentRotation,
@@ -39,15 +40,20 @@ import {
   isDateInCurrentWeek,
   isDateInRange,
   isDateToday,
+  normalizeDate,
+  parseDate,
 } from "@/utils/date";
 
 import type {
   RotationAssignment,
+  RotationConfig,
   RotationResolution,
   TeamMember,
 } from "@/types/team";
 
 import styles from "./page.module.css";
+
+const PLANNING_WARNING_WEEKS = 12;
 
 const getAbsenceTypeLabel = (type: "vacation" | "sickLeave" | "other") => {
   switch (type) {
@@ -64,6 +70,16 @@ const getAbsenceTypeLabel = (type: "vacation" | "sickLeave" | "other") => {
 
 const toDateString = (date: Date) => {
   return date.toISOString().slice(0, 10);
+};
+
+const toLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 };
 
 const getDeploymentKindLabel = (rotation: RotationAssignment) => {
@@ -130,6 +146,67 @@ const getDeploymentDescription = (
   return `${dateLabel} · Reguläres Deployment`;
 };
 
+const getRotationPlanningActionItem = (
+  config: RotationConfig,
+  label: string,
+): ActionRequiredItem | undefined => {
+  const startDate = parseDate(config.startDate);
+
+  const endDate = addWeeks(startDate, config.numberOfWeeks);
+
+  const today = normalizeDate(new Date());
+
+  const normalizedEndDate = normalizeDate(endDate);
+
+  const differenceInMilliseconds =
+    normalizedEndDate.getTime() - today.getTime();
+
+  const millisecondsPerWeek = 7 * 24 * 60 * 60 * 1000;
+
+  const remainingWeeks = Math.ceil(
+    differenceInMilliseconds / millisecondsPerWeek,
+  );
+
+  if (remainingWeeks > PLANNING_WARNING_WEEKS) {
+    return undefined;
+  }
+
+  const formattedEndDate = formatDate(toLocalDateString(endDate));
+
+  if (remainingWeeks <= 0) {
+    return {
+      id: `rotation-planning-expired-${config.type}`,
+
+      title: `${label}-Planungszeitraum abgelaufen`,
+
+      description:
+        "Für diese Rotation werden keine neuen Termine mehr aus der aktuellen Konfiguration generiert. Bitte lege eine neue Rotationsversion an.",
+
+      meta: `Geplant bis ${formattedEndDate}`,
+
+      href: "/admin/rotations",
+
+      actionLabel: "Rotation verlängern",
+    };
+  }
+
+  return {
+    id: `rotation-planning-warning-${config.type}`,
+
+    title: `${label}-Planung endet bald`,
+
+    description: `Der aktuelle Planungszeitraum endet in ungefähr ${remainingWeeks} ${
+      remainingWeeks === 1 ? "Woche" : "Wochen"
+    }. Plane rechtzeitig die nächste Rotationsversion.`,
+
+    meta: `Geplant bis ${formattedEndDate}`,
+
+    href: "/admin/rotations",
+
+    actionLabel: "Rotationen verwalten",
+  };
+};
+
 export default async function Home() {
   const currentUser = await getCurrentUser();
 
@@ -142,6 +219,10 @@ export default async function Home() {
       teamMembers,
       absences,
       substitutions,
+
+      dispatcherConfig,
+      deploymentConfig,
+
       dispatcherRotations,
       deploymentRotations,
     },
@@ -183,6 +264,7 @@ export default async function Home() {
   /*
    * Dispatcher bleibt eine Wochenrotation.
    */
+
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
 
   const dispatcherResolution = currentDispatcher
@@ -190,12 +272,9 @@ export default async function Home() {
     : undefined;
 
   /*
-   * Deployments sind einzelne Termine.
-   *
-   * Das nächste Deployment kann entweder
-   * dem T2 Team oder den Code Busters
-   * zugeordnet sein.
+   * Deployment ist ein konkreter Termin.
    */
+
   const nextDeployment = getNextRotation(deploymentRotations);
 
   const nextDeploymentResolution = nextDeployment
@@ -203,14 +282,12 @@ export default async function Home() {
     : undefined;
 
   /*
-   * Für die persönliche Rotation interessieren
-   * uns nur Deployments dieser Woche, deren
-   * effektive Zuständigkeit der eingeloggte User ist.
+   * Persönliche Deployments dieser Woche.
    *
-   * Die technische T2-ID kann niemals einer User-ID
-   * entsprechen und wird deshalb automatisch
-   * ausgeschlossen.
+   * T2 kann hier niemals auftauchen,
+   * da die technische T2-ID keiner User-ID entspricht.
    */
+
   const deploymentsThisWeek =
     getUpcomingRotationsInCurrentWeek(deploymentRotations);
 
@@ -348,10 +425,6 @@ export default async function Home() {
   /*
    * Handlungsbedarf:
    * unbesetzte aktuelle oder kommende Rotationen.
-   *
-   * Ein T2-Slot kann hier nicht auftauchen:
-   * resolveRotation() behandelt T2 immer als regulär,
-   * da T2 keine Abwesenheiten in unserem System besitzt.
    */
 
   const uncoveredRotationItems: ActionRequiredItem[] = [
@@ -397,9 +470,9 @@ export default async function Home() {
 
         meta: isDeployment
           ? formatDate(rotation.startDate)
-          : `${formatDate(
-              rotation.startDate,
-            )} – ${formatDate(rotation.endDate)}`,
+          : `${formatDate(rotation.startDate)} – ${formatDate(
+              rotation.endDate,
+            )}`,
 
         href: "/absences?status=upcoming",
 
@@ -408,7 +481,21 @@ export default async function Home() {
     });
 
   /*
-   * Urlaubsübergaben für den aktuellen User
+   * Admin-Warnungen für auslaufende
+   * Rotationsplanung.
+   */
+
+  const planningActionItems: ActionRequiredItem[] =
+    currentUser.role === "admin"
+      ? [
+          getRotationPlanningActionItem(dispatcherConfig, "Dispatcher"),
+
+          getRotationPlanningActionItem(deploymentConfig, "Deployment"),
+        ].filter((item): item is ActionRequiredItem => item !== undefined)
+      : [];
+
+  /*
+   * Urlaubsübergaben für den aktuellen User.
    */
 
   const relevantVacationRows = vacationRows.filter((absence) => {
@@ -478,6 +565,7 @@ export default async function Home() {
   const actionRequiredItems = [
     ...ownVacationActionItems,
     ...uncoveredRotationItems,
+    ...planningActionItems,
   ];
 
   /*
