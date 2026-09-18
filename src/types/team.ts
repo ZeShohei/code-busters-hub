@@ -21,11 +21,24 @@ export interface Absence {
 
 export interface Substitution {
   id: string;
+
+  /*
+   * Eindeutige fachliche Zuordnung.
+   * Wenn eine Vertretung für eine konkrete
+   * Abwesenheit gesucht wird, immer diese ID
+   * verwenden.
+   */
   absenceId: string;
+
+  /*
+   * Convenience-Daten aus der zugehörigen
+   * Abwesenheit für Übersichten und Filter.
+   */
   teamMemberId: string;
-  substituteTeamMemberId: string;
   startDate: string;
   endDate: string;
+
+  substituteTeamMemberId: string;
 }
 
 export interface RotationAssignment {

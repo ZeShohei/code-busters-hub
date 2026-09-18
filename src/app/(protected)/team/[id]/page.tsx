@@ -1,6 +1,14 @@
 import { notFound } from "next/navigation";
+
+import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
+import { PageHeader } from "@/components/PageHeader/PageHeader";
+
+import { getAppData } from "@/data/appData";
+
 import { getTeamMemberName } from "@/features/team/utils";
+
 import type { Absence, RotationAssignment } from "@/types/team";
+
 import {
   formatDate,
   getCalendarWeek,
@@ -9,9 +17,6 @@ import {
   isDateInRange,
   parseDate,
 } from "@/utils/date";
-import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
-import { PageHeader } from "@/components/PageHeader/PageHeader";
-import { getAppData } from "@/data/appData";
 
 import styles from "./page.module.css";
 
@@ -132,10 +137,6 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
     notFound();
   }
 
-  if (!teamMember) {
-    notFound();
-  }
-
   const memberAbsences = sortAbsencesByStartDate(
     absences.filter((absence) => absence.teamMemberId === teamMember.id),
   );
@@ -156,10 +157,19 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
     ),
   );
 
+  /*
+   * Hier sind die Convenience-Daten sinnvoll:
+   * Wir suchen alle Vertretungen für Abwesenheiten
+   * dieses Teammitglieds.
+   */
   const substitutionsForMember = substitutions.filter(
     (substitution) => substitution.teamMemberId === teamMember.id,
   );
 
+  /*
+   * Alle Vertretungen, die dieses Teammitglied
+   * selbst übernimmt.
+   */
   const substitutionsByMember = substitutions.filter(
     (substitution) => substitution.substituteTeamMemberId === teamMember.id,
   );
@@ -177,6 +187,7 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
           },
         ]}
       />
+
       <PageHeader
         eyebrow="Teammitglied"
         title={teamMember.displayName}
@@ -229,11 +240,14 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
                 absence.endDate,
               );
 
+              /*
+               * Eine konkrete Abwesenheit hat
+               * höchstens eine Substitution.
+               * Deshalb ausschließlich über
+               * absenceId zuordnen.
+               */
               const substitution = substitutions.find(
-                (item) =>
-                  item.teamMemberId === teamMember.id &&
-                  item.startDate <= absence.endDate &&
-                  item.endDate >= absence.startDate,
+                (item) => item.absenceId === absence.id,
               );
 
               return (

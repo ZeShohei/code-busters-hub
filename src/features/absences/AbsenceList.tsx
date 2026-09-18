@@ -231,11 +231,12 @@ export const AbsenceList = ({
               absence.endDate,
             );
 
+            /*
+             * Eine Vertretung gehört eindeutig
+             * zu genau dieser Abwesenheit.
+             */
             const substitution = substitutions.find(
-              (item) =>
-                item.teamMemberId === absence.teamMemberId &&
-                item.startDate <= absence.endDate &&
-                item.endDate >= absence.startDate,
+              (item) => item.absenceId === absence.id,
             );
 
             const canManage =

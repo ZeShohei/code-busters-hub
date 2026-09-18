@@ -33,6 +33,7 @@ export const getAppData = async () => {
         include: {
           absence: true,
         },
+
         orderBy: {
           absence: {
             startDate: "asc",
@@ -48,6 +49,7 @@ export const getAppData = async () => {
             },
           },
         },
+
         orderBy: {
           startDate: "asc",
         },
@@ -73,13 +75,25 @@ export const getAppData = async () => {
     type: absence.type,
   }));
 
+  /*
+   * Die Vertretung besitzt in der Datenbank bereits
+   * eine eindeutige Relation zur Abwesenheit über absenceId.
+   *
+   * teamMemberId/startDate/endDate werden zusätzlich
+   * für Übersichten bereitgestellt, damit Komponenten
+   * nicht jedes Mal die zugehörige Absence auflösen müssen.
+   */
   const substitutions: Substitution[] = substitutionRows.map(
     (substitution) => ({
       id: substitution.id,
       absenceId: substitution.absenceId,
+
       teamMemberId: substitution.absence.teamMemberId,
+
       substituteTeamMemberId: substitution.substituteTeamMemberId,
+
       startDate: toDateString(substitution.absence.startDate),
+
       endDate: toDateString(substitution.absence.endDate),
     }),
   );
@@ -89,14 +103,21 @@ export const getAppData = async () => {
   ): RotationConfig[] => {
     return rotationConfigRows
       .filter((config) => config.type === type)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+      .sort(
+        (first, second) =>
+          first.startDate.getTime() - second.startDate.getTime(),
+      )
       .map((config) => ({
         participantTeamMemberIds: config.participants.map(
           (participant) => participant.teamMemberId,
         ),
+
         startDate: toDateString(config.startDate),
+
         numberOfWeeks: config.numberOfWeeks,
+
         startIndex: config.startIndex,
+
         type,
       }));
   };
