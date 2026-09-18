@@ -6,6 +6,7 @@ import { getAppData } from "@/data/appData";
 import { AdminRotationForm } from "@/features/admin/rotations/AdminRotationForm";
 import { DeploymentExceptionForm } from "@/features/admin/rotations/DeploymentExceptionForm";
 import { RotationHistory } from "@/features/admin/rotations/RotationHistory";
+import { RotationPlanningStatus } from "@/features/admin/rotations/RotationPlanningStatus";
 
 import styles from "./page.module.css";
 
@@ -45,6 +46,8 @@ export default async function AdminRotationsPage() {
       />
 
       <section className={styles.rotationSection}>
+        <RotationPlanningStatus title="Dispatcher" config={dispatcherConfig} />
+
         <AdminRotationForm
           title="Dispatcher"
           config={dispatcherConfig}
@@ -61,6 +64,8 @@ export default async function AdminRotationsPage() {
       </section>
 
       <section className={styles.rotationSection}>
+        <RotationPlanningStatus title="Deployment" config={deploymentConfig} />
+
         <AdminRotationForm
           title="Deployment"
           config={deploymentConfig}
