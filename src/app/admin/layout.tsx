@@ -10,13 +10,19 @@ interface AdminLayoutProps {
 }
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  await requireAdmin();
+  const currentUser = await requireAdmin();
 
   return (
     <div className={styles.layout}>
-      <AdminNavigation />
+      <AdminNavigation
+        currentUser={{
+          displayName: currentUser.displayName,
+          email: currentUser.email,
+          role: currentUser.role,
+        }}
+      />
 
-      {children}
+      <main className={styles.content}>{children}</main>
     </div>
   );
 }

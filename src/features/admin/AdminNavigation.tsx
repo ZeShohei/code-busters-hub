@@ -5,6 +5,14 @@ import { usePathname } from "next/navigation";
 
 import styles from "./AdminNavigation.module.css";
 
+interface AdminNavigationProps {
+  currentUser: {
+    displayName: string;
+    email: string;
+    role: "admin" | "member";
+  };
+}
+
 const navigationItems = [
   {
     href: "/admin",
@@ -25,26 +33,40 @@ const navigationItems = [
   },
 ];
 
-export const AdminNavigation = () => {
+export const AdminNavigation = ({ currentUser }: AdminNavigationProps) => {
   const pathname = usePathname();
 
   return (
-    <nav className={styles.navigation} aria-label="Admin-Navigation">
-      {navigationItems.map((item) => {
-        const isActive = item.exact
-          ? pathname === item.href
-          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    <div className={styles.wrapper}>
+      <nav className={styles.navigation} aria-label="Admin-Navigation">
+        {navigationItems.map((item) => {
+          const isActive = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={isActive ? styles.activeLink : styles.link}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={isActive ? styles.activeLink : styles.link}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className={styles.user}>
+        <div className={styles.userText}>
+          <strong>{currentUser.displayName}</strong>
+
+          <span className={styles.email}>{currentUser.email}</span>
+        </div>
+
+        <span className={styles.role}>
+          {currentUser.role === "admin" ? "Admin" : "Mitglied"}
+        </span>
+      </div>
+    </div>
   );
 };
