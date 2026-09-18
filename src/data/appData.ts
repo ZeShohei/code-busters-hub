@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 
 import type {
   Absence,
+  DeploymentException,
+  RotationAssignment,
   RotationConfig,
   Substitution,
   TeamMember,
@@ -15,46 +17,57 @@ const toDateString = (date: Date) => {
 };
 
 export const getAppData = async () => {
-  const [teamMemberRows, absenceRows, substitutionRows, rotationConfigRows] =
-    await Promise.all([
-      prisma.teamMember.findMany({
-        orderBy: {
-          displayName: "asc",
-        },
-      }),
+  const [
+    teamMemberRows,
+    absenceRows,
+    substitutionRows,
+    rotationConfigRows,
+    deploymentExceptionRows,
+  ] = await Promise.all([
+    prisma.teamMember.findMany({
+      orderBy: {
+        displayName: "asc",
+      },
+    }),
 
-      prisma.absence.findMany({
-        orderBy: {
+    prisma.absence.findMany({
+      orderBy: {
+        startDate: "asc",
+      },
+    }),
+
+    prisma.substitution.findMany({
+      include: {
+        absence: true,
+      },
+
+      orderBy: {
+        absence: {
           startDate: "asc",
         },
-      }),
+      },
+    }),
 
-      prisma.substitution.findMany({
-        include: {
-          absence: true,
-        },
-
-        orderBy: {
-          absence: {
-            startDate: "asc",
+    prisma.rotationConfig.findMany({
+      include: {
+        participants: {
+          orderBy: {
+            position: "asc",
           },
         },
-      }),
+      },
 
-      prisma.rotationConfig.findMany({
-        include: {
-          participants: {
-            orderBy: {
-              position: "asc",
-            },
-          },
-        },
+      orderBy: {
+        startDate: "asc",
+      },
+    }),
 
-        orderBy: {
-          startDate: "asc",
-        },
-      }),
-    ]);
+    prisma.deploymentException.findMany({
+      orderBy: {
+        deploymentDate: "asc",
+      },
+    }),
+  ]);
 
   const teamMembers: TeamMember[] = teamMemberRows.map((member) => ({
     id: member.id,
@@ -75,17 +88,10 @@ export const getAppData = async () => {
     type: absence.type,
   }));
 
-  /*
-   * Die Vertretung besitzt in der Datenbank bereits
-   * eine eindeutige Relation zur Abwesenheit über absenceId.
-   *
-   * teamMemberId/startDate/endDate werden zusätzlich
-   * für Übersichten bereitgestellt, damit Komponenten
-   * nicht jedes Mal die zugehörige Absence auflösen müssen.
-   */
   const substitutions: Substitution[] = substitutionRows.map(
     (substitution) => ({
       id: substitution.id,
+
       absenceId: substitution.absenceId,
 
       teamMemberId: substitution.absence.teamMemberId,
@@ -97,6 +103,22 @@ export const getAppData = async () => {
       endDate: toDateString(substitution.absence.endDate),
     }),
   );
+
+  const deploymentExceptions: DeploymentException[] =
+    deploymentExceptionRows.map((exception) => ({
+      id: exception.id,
+      type: exception.type,
+
+      originalDate: exception.originalDate
+        ? toDateString(exception.originalDate)
+        : null,
+
+      deploymentDate: toDateString(exception.deploymentDate),
+
+      teamMemberId: exception.teamMemberId,
+
+      reason: exception.reason,
+    }));
 
   const mapRotationConfigs = (
     type: "dispatcher" | "deployment",
@@ -136,9 +158,13 @@ export const getAppData = async () => {
 
       const rotations = generateRotations({
         teamMembers: participants,
+
         startDate: config.startDate,
+
         numberOfWeeks: config.numberOfWeeks,
+
         type: config.type,
+
         startIndex: config.startIndex,
       });
 
@@ -168,7 +194,86 @@ export const getAppData = async () => {
 
   const dispatcherRotations = generateVersionedRotations(dispatcherConfigs);
 
-  const deploymentRotations = generateVersionedRotations(deploymentConfigs);
+  const regularDeploymentRotations =
+    generateVersionedRotations(deploymentConfigs);
+
+  /*
+   * Verschobene Deployments ersetzen
+   * exakt den regulären Termin.
+   *
+   * Sie verändern NICHT den 14-Tage-
+   * Rhythmus und auch nicht die weitere
+   * Personenreihenfolge.
+   */
+  const rescheduledByOriginalDate = new Map(
+    deploymentExceptions
+      .filter(
+        (exception) =>
+          exception.type === "rescheduled" && exception.originalDate,
+      )
+      .map((exception) => [exception.originalDate as string, exception]),
+  );
+
+  const adjustedDeploymentRotations: RotationAssignment[] =
+    regularDeploymentRotations.map((rotation) => {
+      const exception = rescheduledByOriginalDate.get(rotation.startDate);
+
+      if (!exception) {
+        return {
+          ...rotation,
+
+          deploymentKind: "regular",
+        };
+      }
+
+      return {
+        ...rotation,
+
+        id: `deployment-rescheduled-${exception.id}`,
+
+        teamMemberId: exception.teamMemberId ?? rotation.teamMemberId,
+
+        startDate: exception.deploymentDate,
+
+        endDate: exception.deploymentDate,
+
+        deploymentKind: "rescheduled",
+
+        originalDate: rotation.startDate,
+
+        reason: exception.reason ?? undefined,
+      };
+    });
+
+  /*
+   * Sonderdeployments werden zusätzlich
+   * eingefügt und beeinflussen die normale
+   * Rotation nicht.
+   */
+  const specialDeployments: RotationAssignment[] = deploymentExceptions
+    .filter(
+      (exception) => exception.type === "special" && exception.teamMemberId,
+    )
+    .map((exception) => ({
+      id: `deployment-special-${exception.id}`,
+
+      teamMemberId: exception.teamMemberId as string,
+
+      startDate: exception.deploymentDate,
+
+      endDate: exception.deploymentDate,
+
+      type: "deployment",
+
+      deploymentKind: "special",
+
+      reason: exception.reason ?? undefined,
+    }));
+
+  const deploymentRotations = [
+    ...adjustedDeploymentRotations,
+    ...specialDeployments,
+  ].sort((first, second) => first.startDate.localeCompare(second.startDate));
 
   return {
     teamMembers,
@@ -183,5 +288,7 @@ export const getAppData = async () => {
 
     dispatcherRotations,
     deploymentRotations,
+
+    deploymentExceptions,
   };
 };

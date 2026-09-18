@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
 import { useMemo } from "react";
 
 import type {
@@ -9,6 +10,7 @@ import type {
   Substitution,
   TeamMember,
 } from "@/types/team";
+
 import { getDateRangeStatus } from "@/utils/date";
 
 import { RotationList } from "./RotationList";
@@ -53,6 +55,7 @@ export const RotationsOverview = ({
 }: RotationsOverviewProps) => {
   const router = useRouter();
   const pathname = usePathname();
+
   const searchParams = useSearchParams();
 
   const typeParam = searchParams.get("type");
@@ -200,7 +203,7 @@ export const RotationsOverview = ({
         </p>
       ) : (
         <div className={styles.results}>
-          {filteredDispatcherRotations.length > 0 && (
+          {filteredDispatcherRotations.length > 0 ? (
             <RotationList
               title="Dispatcher"
               description="Wöchentliche Verantwortung für Monitoring und New Relic."
@@ -209,18 +212,18 @@ export const RotationsOverview = ({
               substitutions={substitutions}
               teamMembers={teamMembers}
             />
-          )}
+          ) : null}
 
-          {filteredDeploymentRotations.length > 0 && (
+          {filteredDeploymentRotations.length > 0 ? (
             <RotationList
               title="Deployment"
-              description="Wöchentliche Verantwortung für Deployments."
+              description="Deployment standardmäßig alle zwei Wochen am Donnerstag. Verschiebungen und Sonderdeployments werden separat berücksichtigt."
               rotations={filteredDeploymentRotations}
               absences={absences}
               substitutions={substitutions}
               teamMembers={teamMembers}
             />
-          )}
+          ) : null}
         </div>
       )}
     </div>

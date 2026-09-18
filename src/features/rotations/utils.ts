@@ -88,15 +88,6 @@ export const resolveRotation = (
     return {
       status: "uncovered",
       assignedTeamMemberId: rotation.teamMemberId,
-
-      /*
-       * Wir behalten hier aus Kompatibilitätsgründen
-       * die ursprünglich eingeteilte Person.
-       *
-       * Der Status "uncovered" ist die Information,
-       * dass tatsächlich niemand die Rotation
-       * übernommen hat.
-       */
       effectiveTeamMemberId: rotation.teamMemberId,
     };
   }
@@ -144,6 +135,20 @@ const getMonday = (date: Date) => {
   return result;
 };
 
+const getThursdayOnOrAfter = (date: Date) => {
+  const result = new Date(date);
+
+  const currentDay = result.getDay();
+
+  const thursday = 4;
+
+  const daysUntilThursday = (thursday - currentDay + 7) % 7;
+
+  result.setDate(result.getDate() + daysUntilThursday);
+
+  return result;
+};
+
 interface GenerateRotationsOptions {
   teamMembers: TeamMember[];
   startDate: string;
@@ -152,17 +157,19 @@ interface GenerateRotationsOptions {
   startIndex?: number;
 }
 
-export const generateRotations = ({
+interface GenerateTypedRotationsOptions {
+  teamMembers: TeamMember[];
+  startDate: string;
+  numberOfWeeks: number;
+  startIndex: number;
+}
+
+const generateDispatcherRotations = ({
   teamMembers,
   startDate,
   numberOfWeeks,
-  type,
-  startIndex = 0,
-}: GenerateRotationsOptions): RotationAssignment[] => {
-  if (teamMembers.length === 0 || numberOfWeeks <= 0) {
-    return [];
-  }
-
+  startIndex,
+}: GenerateTypedRotationsOptions): RotationAssignment[] => {
   const firstMonday = getMonday(parseDate(startDate));
 
   return Array.from(
@@ -178,13 +185,81 @@ export const generateRotations = ({
 
       const teamMember = teamMembers[teamMemberIndex];
 
+      const startDateString = formatDate(rotationStartDate);
+
       return {
-        id: `${type}-${weekIndex + 1}`,
+        id: `dispatcher-${startDateString}-${teamMember.id}`,
         teamMemberId: teamMember.id,
-        startDate: formatDate(rotationStartDate),
+        startDate: startDateString,
         endDate: formatDate(rotationEndDate),
-        type,
+        type: "dispatcher",
       };
     },
   );
+};
+
+const generateDeploymentRotations = ({
+  teamMembers,
+  startDate,
+  numberOfWeeks,
+  startIndex,
+}: GenerateTypedRotationsOptions): RotationAssignment[] => {
+  const configStartDate = parseDate(startDate);
+
+  const endExclusive = addDays(configStartDate, numberOfWeeks * 7);
+
+  const firstDeploymentDate = getThursdayOnOrAfter(configStartDate);
+
+  const rotations: RotationAssignment[] = [];
+
+  let deploymentDate = firstDeploymentDate;
+  let deploymentIndex = 0;
+
+  while (deploymentDate < endExclusive) {
+    const teamMemberIndex = (startIndex + deploymentIndex) % teamMembers.length;
+
+    const teamMember = teamMembers[teamMemberIndex];
+
+    const date = formatDate(deploymentDate);
+
+    rotations.push({
+      id: `deployment-${date}-${teamMember.id}`,
+      teamMemberId: teamMember.id,
+      startDate: date,
+      endDate: date,
+      type: "deployment",
+      deploymentKind: "regular",
+    });
+
+    deploymentDate = addDays(deploymentDate, 14);
+
+    deploymentIndex += 1;
+  }
+
+  return rotations;
+};
+
+export const generateRotations = ({
+  teamMembers,
+  startDate,
+  numberOfWeeks,
+  type,
+  startIndex = 0,
+}: GenerateRotationsOptions): RotationAssignment[] => {
+  if (teamMembers.length === 0 || numberOfWeeks <= 0) {
+    return [];
+  }
+
+  const generatorOptions: GenerateTypedRotationsOptions = {
+    teamMembers,
+    startDate,
+    numberOfWeeks,
+    startIndex,
+  };
+
+  if (type === "deployment") {
+    return generateDeploymentRotations(generatorOptions);
+  }
+
+  return generateDispatcherRotations(generatorOptions);
 };

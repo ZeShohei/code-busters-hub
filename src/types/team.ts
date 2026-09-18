@@ -41,12 +41,18 @@ export interface Substitution {
   substituteTeamMemberId: string;
 }
 
+export type DeploymentKind = "regular" | "rescheduled" | "special";
+
 export interface RotationAssignment {
   id: string;
   teamMemberId: string;
   startDate: string;
   endDate: string;
   type: "deployment" | "dispatcher";
+
+  deploymentKind?: DeploymentKind;
+  originalDate?: string;
+  reason?: string;
 }
 
 export interface RotationConfig {
@@ -55,6 +61,20 @@ export interface RotationConfig {
   numberOfWeeks: number;
   startIndex: number;
   type: RotationAssignment["type"];
+}
+
+export type DeploymentExceptionType = "rescheduled" | "special";
+
+export interface DeploymentException {
+  id: string;
+  type: DeploymentExceptionType;
+
+  originalDate: string | null;
+  deploymentDate: string;
+
+  teamMemberId: string | null;
+
+  reason: string | null;
 }
 
 export type RotationStatus = "regular" | "substitution" | "uncovered";

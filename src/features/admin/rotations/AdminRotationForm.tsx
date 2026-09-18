@@ -44,8 +44,12 @@ export const AdminRotationForm = ({
   );
 
   const [error, setError] = useState<string>();
+
   const [success, setSuccess] = useState<string>();
+
   const [isSaving, setIsSaving] = useState(false);
+
+  const isDeployment = config.type === "deployment";
 
   const getTeamMember = (id: string) => {
     return activeTeamMembers.find((member) => member.id === id);
@@ -132,18 +136,24 @@ export const AdminRotationForm = ({
           <h2>{title}</h2>
 
           <p>
-            Teilnehmer und Reihenfolge dieser Rotation verwalten. Änderungen
-            gelten ab dem gewählten Datum.
+            {isDeployment
+              ? "Deployments werden automatisch alle zwei Wochen an einem Donnerstag erzeugt. Änderungen gelten ab dem gewählten Datum."
+              : "Teilnehmer und Reihenfolge dieser Rotation verwalten. Änderungen gelten ab dem gewählten Datum."}
           </p>
         </div>
       </div>
 
       <div className={styles.info}>
-        <strong>Versionierte Rotation</strong>
+        <strong>
+          {isDeployment
+            ? "Zweiwöchige Deployment-Rotation"
+            : "Versionierte Rotation"}
+        </strong>
 
         <p>
-          Beim Speichern wird die bestehende Historie nicht überschrieben. Die
-          neue Konfiguration gilt erst ab dem angegebenen Datum.
+          {isDeployment
+            ? "Der erste Deployment-Termin ist der erste Donnerstag ab dem gewählten Startdatum. Danach wird alle 14 Tage die nächste Person eingeteilt. Verschiebungen und Sonderdeployments werden separat verwaltet."
+            : "Beim Speichern wird die bestehende Historie nicht überschrieben. Die neue Konfiguration gilt erst ab dem angegebenen Datum."}
         </p>
       </div>
 
@@ -158,14 +168,18 @@ export const AdminRotationForm = ({
             value={startDate}
             onChange={(event) => {
               setStartDate(event.target.value);
+
               setSuccess(undefined);
+
               setError(undefined);
             }}
           />
         </div>
 
         <div className={styles.field}>
-          <label htmlFor={`${config.type}-weeks`}>Anzahl Wochen</label>
+          <label htmlFor={`${config.type}-weeks`}>
+            Planungszeitraum in Wochen
+          </label>
 
           <input
             id={`${config.type}-weeks`}
@@ -175,7 +189,9 @@ export const AdminRotationForm = ({
             value={numberOfWeeks}
             onChange={(event) => {
               setNumberOfWeeks(Number(event.target.value));
+
               setSuccess(undefined);
+
               setError(undefined);
             }}
           />
@@ -257,6 +273,7 @@ export const AdminRotationForm = ({
           value={startTeamMemberId}
           onChange={(event) => {
             setStartTeamMemberId(event.target.value);
+
             setSuccess(undefined);
             setError(undefined);
           }}

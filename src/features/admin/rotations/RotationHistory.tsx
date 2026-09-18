@@ -8,7 +8,9 @@ import type {
   Substitution,
   TeamMember,
 } from "@/types/team";
+
 import { formatDate, getCalendarWeek, getDateRangeStatus } from "@/utils/date";
+
 import { resolveRotation } from "@/features/rotations/utils";
 import { RotationStatusBadge } from "@/features/rotations/RotationStatusBadge";
 
@@ -34,7 +36,9 @@ export const RotationHistory = ({
   const PAGE_SIZE = 12;
 
   const [filter, setFilter] = useState<HistoryFilter>("upcoming");
+
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
   const [search, setSearch] = useState("");
 
   const changeFilter = (newFilter: HistoryFilter) => {
@@ -111,6 +115,7 @@ export const RotationHistory = ({
 
           <p>Verlauf aller generierten Rotationsschritte.</p>
         </div>
+
         <div className={styles.controls}>
           <div className={styles.search}>
             <label
@@ -127,6 +132,7 @@ export const RotationHistory = ({
               placeholder="Name oder KW"
               onChange={(event) => {
                 setSearch(event.target.value);
+
                 setVisibleCount(PAGE_SIZE);
               }}
             />
@@ -182,6 +188,7 @@ export const RotationHistory = ({
             {filteredRotations.length}{" "}
             {filteredRotations.length === 1 ? "Eintrag" : "Einträge"}
           </p>
+
           {visibleRotations.map((rotation) => {
             const resolution = resolveRotation(
               rotation,
@@ -208,10 +215,27 @@ export const RotationHistory = ({
                   <strong>KW {getCalendarWeek(rotation.startDate)}</strong>
 
                   <span>
-                    {formatDate(rotation.startDate)}
-                    {" – "}
-                    {formatDate(rotation.endDate)}
+                    {rotation.type === "deployment"
+                      ? formatDate(rotation.startDate)
+                      : `${formatDate(rotation.startDate)} – ${formatDate(
+                          rotation.endDate,
+                        )}`}
                   </span>
+
+                  {rotation.deploymentKind === "special" ? (
+                    <span>Sonderdeployment</span>
+                  ) : null}
+
+                  {rotation.deploymentKind === "rescheduled" ? (
+                    <span>
+                      Verschoben
+                      {rotation.originalDate
+                        ? ` von ${formatDate(rotation.originalDate)}`
+                        : ""}
+                    </span>
+                  ) : null}
+
+                  {rotation.reason ? <span>{rotation.reason}</span> : null}
 
                   <span className={styles.status}>
                     {status === "past"
@@ -241,6 +265,7 @@ export const RotationHistory = ({
               </article>
             );
           })}
+
           {hasMore ? (
             <div className={styles.loadMore}>
               <button

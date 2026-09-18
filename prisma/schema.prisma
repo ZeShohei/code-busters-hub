@@ -23,6 +23,11 @@ enum TeamMemberRole {
   member
 }
 
+enum DeploymentExceptionType {
+  rescheduled
+  special
+}
+
 model TeamMember {
   id          String         @id @default(uuid())
   firstName   String
@@ -38,6 +43,7 @@ model TeamMember {
   absences               Absence[]
   substitutionsByMe      Substitution[]        @relation("SubstituteTeamMember")
   rotationParticipations RotationParticipant[]
+  deploymentExceptions   DeploymentException[]
   sessions               AuthSession[]
 
   createdAt DateTime @default(now())
@@ -180,4 +186,23 @@ model RotationParticipant {
 
   @@unique([rotationConfigId, teamMemberId])
   @@unique([rotationConfigId, position])
+}
+
+model DeploymentException {
+  id String @id @default(uuid())
+
+  type DeploymentExceptionType
+
+  originalDate   DateTime? @unique @db.Date
+  deploymentDate DateTime  @db.Date
+
+  teamMemberId String?
+  teamMember   TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
+
+  reason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deploymentDate])
 }

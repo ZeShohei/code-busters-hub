@@ -1,7 +1,10 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+
 import { getAppData } from "@/data/appData";
+
 import { AdminRotationForm } from "@/features/admin/rotations/AdminRotationForm";
+import { DeploymentExceptionForm } from "@/features/admin/rotations/DeploymentExceptionForm";
 import { RotationHistory } from "@/features/admin/rotations/RotationHistory";
 
 import styles from "./page.module.css";
@@ -15,6 +18,7 @@ export default async function AdminRotationsPage() {
     deploymentConfig,
     dispatcherRotations,
     deploymentRotations,
+    deploymentExceptions,
   } = await getAppData();
 
   return (
@@ -58,6 +62,11 @@ export default async function AdminRotationsPage() {
           title="Deployment"
           config={deploymentConfig}
           teamMembers={teamMembers}
+        />
+
+        <DeploymentExceptionForm
+          teamMembers={teamMembers}
+          exceptions={deploymentExceptions}
         />
 
         <RotationHistory

@@ -23,6 +23,19 @@ interface RotationListProps {
   teamMembers: TeamMember[];
 }
 
+const getDeploymentKindLabel = (rotation: RotationAssignment) => {
+  switch (rotation.deploymentKind) {
+    case "special":
+      return "Sonderdeployment";
+
+    case "rescheduled":
+      return "Verschoben";
+
+    default:
+      return null;
+  }
+};
+
 export const RotationList = ({
   title,
   description,
@@ -55,11 +68,15 @@ export const RotationList = ({
 
           const cardClassName = [
             styles.card,
+
             resolution.status === "substitution" ? styles.cardSubstitution : "",
+
             resolution.status === "uncovered" ? styles.cardWarning : "",
           ]
             .filter(Boolean)
             .join(" ");
+
+          const deploymentKindLabel = getDeploymentKindLabel(rotation);
 
           return (
             <article key={rotation.id} className={cardClassName}>
@@ -67,6 +84,10 @@ export const RotationList = ({
                 <span>KW</span>
 
                 <strong>{getCalendarWeek(rotation.startDate)}</strong>
+
+                {deploymentKindLabel ? (
+                  <small>{deploymentKindLabel}</small>
+                ) : null}
               </div>
 
               <div className={styles.person}>
@@ -85,13 +106,26 @@ export const RotationList = ({
               </div>
 
               <div className={styles.period}>
-                <span>Zeitraum</span>
+                <span>
+                  {rotation.type === "deployment" ? "Termin" : "Zeitraum"}
+                </span>
 
                 <strong>
-                  {formatDate(rotation.startDate)}
-                  {" – "}
-                  {formatDate(rotation.endDate)}
+                  {rotation.type === "deployment"
+                    ? formatDate(rotation.startDate)
+                    : `${formatDate(rotation.startDate)} – ${formatDate(
+                        rotation.endDate,
+                      )}`}
                 </strong>
+
+                {rotation.deploymentKind === "rescheduled" &&
+                rotation.originalDate ? (
+                  <small>
+                    Ursprünglich: {formatDate(rotation.originalDate)}
+                  </small>
+                ) : null}
+
+                {rotation.reason ? <small>{rotation.reason}</small> : null}
               </div>
             </article>
           );
