@@ -10,11 +10,12 @@ import type {
 } from "@/types/team";
 
 import { resolveRotation } from "@/features/rotations/utils";
-import { getTeamMemberName } from "@/features/team/utils";
 import { RotationStatusBadge } from "@/features/rotations/RotationStatusBadge";
+import { getTeamMemberName } from "@/features/team/utils";
 
 import {
   addWeeks,
+  formatDate,
   formatDayMonth,
   formatWeekDay,
   formatWeekRange,
@@ -34,6 +35,29 @@ interface WeekOverviewProps {
   teamMembers: TeamMember[];
 }
 
+const toDateString = (date: Date) => {
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getDeploymentKindLabel = (rotation: RotationAssignment) => {
+  switch (rotation.deploymentKind) {
+    case "special":
+      return "Sonderdeployment";
+
+    case "rescheduled":
+      return "Verschoben";
+
+    default:
+      return "Deployment";
+  }
+};
+
 export const WeekOverview = ({
   absences,
   deploymentRotations,
@@ -51,19 +75,13 @@ export const WeekOverview = ({
   const friday = weekDays[weekDays.length - 1];
 
   /*
-   * Für die Wochenrotation verwenden wir
-   * den Montag der aktuell ausgewählten Woche.
+   * Dispatcher bleibt eine klassische
+   * Wochenrotation.
    */
   const currentDispatcher = getCurrentRotation(dispatcherRotations, monday);
 
-  const currentDeployment = getCurrentRotation(deploymentRotations, monday);
-
   const dispatcherResolution = currentDispatcher
     ? resolveRotation(currentDispatcher, absences, substitutions)
-    : undefined;
-
-  const deploymentResolution = currentDeployment
-    ? resolveRotation(currentDeployment, absences, substitutions)
     : undefined;
 
   const handlePreviousWeek = () => {
@@ -147,41 +165,37 @@ export const WeekOverview = ({
           ) : null}
         </article>
 
-        <article className={styles.rotation}>
-          <span>Deployment</span>
+        <article className={styles.rotationInfo}>
+          <span>Deployments</span>
 
-          <strong>
-            {deploymentResolution
-              ? getTeamMemberName(
-                  deploymentResolution.effectiveTeamMemberId,
-                  teamMembers,
-                )
-              : "Nicht eingeteilt"}
-          </strong>
+          <strong>Am jeweiligen Tag</strong>
 
-          {deploymentResolution ? (
-            <RotationStatusBadge
-              resolution={deploymentResolution}
-              effectiveTeamMemberName={
-                deploymentResolution.status === "substitution"
-                  ? getTeamMemberName(
-                      deploymentResolution.effectiveTeamMemberId,
-                      teamMembers,
-                    )
-                  : undefined
-              }
-            />
-          ) : null}
+          <p>
+            Reguläre Deployments finden alle zwei Wochen am Donnerstag statt.
+            Verschiebungen und Sonderdeployments werden am tatsächlichen Termin
+            angezeigt.
+          </p>
         </article>
       </div>
 
       <div className={styles.days}>
         {weekDays.map((day) => {
+          const dayString = toDateString(day);
+
           const dayAbsences = absences.filter((absence) =>
             isDateInRange(absence.startDate, absence.endDate, day),
           );
 
+          const dayDeployments = deploymentRotations
+            .filter((rotation) => rotation.startDate === dayString)
+            .sort((first, second) =>
+              first.startDate.localeCompare(second.startDate),
+            );
+
           const isToday = isSameDay(day, today);
+
+          const hasContent =
+            dayAbsences.length > 0 || dayDeployments.length > 0;
 
           return (
             <article
@@ -195,25 +209,88 @@ export const WeekOverview = ({
               </header>
 
               <div className={styles.dayContent}>
-                {dayAbsences.length === 0 ? (
-                  <p className={styles.noAbsences}>Keine Abwesenheiten</p>
-                ) : (
-                  dayAbsences.map((absence) => (
-                    <div key={absence.id} className={styles.absence}>
-                      <strong>
-                        {getTeamMemberName(absence.teamMemberId, teamMembers)}
-                      </strong>
+                {dayDeployments.map((rotation) => {
+                  const resolution = resolveRotation(
+                    rotation,
+                    absences,
+                    substitutions,
+                  );
 
-                      <span>
-                        {absence.type === "vacation"
-                          ? "Urlaub"
-                          : absence.type === "sickLeave"
-                            ? "Krankenstand"
-                            : "Abwesend"}
-                      </span>
+                  const assignedName = getTeamMemberName(
+                    resolution.assignedTeamMemberId,
+                    teamMembers,
+                  );
+
+                  const effectiveName = getTeamMemberName(
+                    resolution.effectiveTeamMemberId,
+                    teamMembers,
+                  );
+
+                  return (
+                    <div key={rotation.id} className={styles.deployment}>
+                      <div className={styles.deploymentHeader}>
+                        <strong>{getDeploymentKindLabel(rotation)}</strong>
+
+                        <span>{effectiveName}</span>
+                      </div>
+
+                      <RotationStatusBadge
+                        resolution={resolution}
+                        effectiveTeamMemberName={
+                          resolution.status === "substitution"
+                            ? effectiveName
+                            : undefined
+                        }
+                      />
+
+                      {resolution.status === "substitution" ? (
+                        <span className={styles.deploymentMeta}>
+                          Vertretung für {assignedName}
+                        </span>
+                      ) : null}
+
+                      {resolution.status === "uncovered" ? (
+                        <span className={styles.deploymentWarning}>
+                          {assignedName} ist abwesend und es ist keine
+                          Vertretung eingetragen.
+                        </span>
+                      ) : null}
+
+                      {rotation.deploymentKind === "rescheduled" &&
+                      rotation.originalDate ? (
+                        <span className={styles.deploymentMeta}>
+                          Ursprünglich {formatDate(rotation.originalDate)}
+                        </span>
+                      ) : null}
+
+                      {rotation.reason ? (
+                        <span className={styles.deploymentMeta}>
+                          {rotation.reason}
+                        </span>
+                      ) : null}
                     </div>
-                  ))
-                )}
+                  );
+                })}
+
+                {dayAbsences.map((absence) => (
+                  <div key={absence.id} className={styles.absence}>
+                    <strong>
+                      {getTeamMemberName(absence.teamMemberId, teamMembers)}
+                    </strong>
+
+                    <span>
+                      {absence.type === "vacation"
+                        ? "Urlaub"
+                        : absence.type === "sickLeave"
+                          ? "Krankenstand"
+                          : "Abwesend"}
+                    </span>
+                  </div>
+                ))}
+
+                {!hasContent ? (
+                  <p className={styles.noEntries}>Keine Einträge</p>
+                ) : null}
               </div>
             </article>
           );
