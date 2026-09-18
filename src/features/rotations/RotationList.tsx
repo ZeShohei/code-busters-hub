@@ -7,10 +7,13 @@ import type {
 
 import { formatDate, getCalendarWeek } from "@/utils/date";
 
-import { getTeamMemberName } from "@/features/team/utils";
+import {
+  getRotationAssigneeName,
+  isT2TeamRotation,
+  resolveRotation,
+} from "./utils";
 
 import { RotationStatusBadge } from "./RotationStatusBadge";
-import { resolveRotation } from "./utils";
 
 import styles from "./RotationList.module.css";
 
@@ -56,12 +59,12 @@ export const RotationList = ({
         {rotations.map((rotation) => {
           const resolution = resolveRotation(rotation, absences, substitutions);
 
-          const assignedTeamMemberName = getTeamMemberName(
+          const assignedTeamMemberName = getRotationAssigneeName(
             resolution.assignedTeamMemberId,
             teamMembers,
           );
 
-          const effectiveTeamMemberName = getTeamMemberName(
+          const effectiveTeamMemberName = getRotationAssigneeName(
             resolution.effectiveTeamMemberId,
             teamMembers,
           );
@@ -95,14 +98,18 @@ export const RotationList = ({
 
                 <strong>{assignedTeamMemberName}</strong>
 
-                <RotationStatusBadge
-                  resolution={resolution}
-                  effectiveTeamMemberName={
-                    resolution.status === "substitution"
-                      ? effectiveTeamMemberName
-                      : undefined
-                  }
-                />
+                {isT2TeamRotation(rotation) ? (
+                  <span>Externes Team</span>
+                ) : (
+                  <RotationStatusBadge
+                    resolution={resolution}
+                    effectiveTeamMemberName={
+                      resolution.status === "substitution"
+                        ? effectiveTeamMemberName
+                        : undefined
+                    }
+                  />
+                )}
               </div>
 
               <div className={styles.period}>

@@ -6,6 +6,37 @@ import type {
   TeamMember,
 } from "@/types/team";
 
+/*
+ * T2 ist bewusst kein TeamMember in unserer Datenbank.
+ *
+ * Für die generierte Deployment-Rotation verwenden wir
+ * lediglich eine stabile technische ID.
+ */
+export const T2_TEAM_ROTATION_ID = "__t2-team__";
+
+export const T2_TEAM_NAME = "T2 Team";
+
+export const isT2TeamRotation = (rotation: RotationAssignment) => {
+  return (
+    rotation.type === "deployment" &&
+    rotation.teamMemberId === T2_TEAM_ROTATION_ID
+  );
+};
+
+export const getRotationAssigneeName = (
+  teamMemberId: string,
+  teamMembers: TeamMember[],
+) => {
+  if (teamMemberId === T2_TEAM_ROTATION_ID) {
+    return T2_TEAM_NAME;
+  }
+
+  return (
+    teamMembers.find((member) => member.id === teamMemberId)?.displayName ??
+    "Unbekannt"
+  );
+};
+
 const rangesOverlap = (
   firstStartDate: string,
   firstEndDate: string,
@@ -19,6 +50,14 @@ export const getRotationAbsence = (
   rotation: RotationAssignment,
   absences: Absence[],
 ) => {
+  /*
+   * Das T2 Team gehört nicht zu unserer Benutzerverwaltung
+   * und besitzt deshalb auch keine Abwesenheiten.
+   */
+  if (isT2TeamRotation(rotation)) {
+    return undefined;
+  }
+
   return absences.find(
     (absence) =>
       absence.teamMemberId === rotation.teamMemberId &&
@@ -99,13 +138,13 @@ export const resolveRotation = (
   };
 };
 
-const parseDate = (dateString: string) => {
+const parseLocalDate = (dateString: string) => {
   const [year, month, day] = dateString.split("-").map(Number);
 
   return new Date(year, month - 1, day);
 };
 
-const formatDate = (date: Date) => {
+const formatLocalDate = (date: Date) => {
   const year = date.getFullYear();
 
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -128,9 +167,9 @@ const getMonday = (date: Date) => {
 
   const day = result.getDay();
 
-  const diff = day === 0 ? -6 : 1 - day;
+  const diffToMonday = day === 0 ? -6 : 1 - day;
 
-  result.setDate(result.getDate() + diff);
+  result.setDate(result.getDate() + diffToMonday);
 
   return result;
 };
@@ -155,6 +194,7 @@ interface GenerateRotationsOptions {
   numberOfWeeks: number;
   type: RotationAssignment["type"];
   startIndex?: number;
+  deploymentStartsWithT2?: boolean;
 }
 
 interface GenerateTypedRotationsOptions {
@@ -162,6 +202,7 @@ interface GenerateTypedRotationsOptions {
   startDate: string;
   numberOfWeeks: number;
   startIndex: number;
+  deploymentStartsWithT2: boolean;
 }
 
 const generateDispatcherRotations = ({
@@ -170,7 +211,7 @@ const generateDispatcherRotations = ({
   numberOfWeeks,
   startIndex,
 }: GenerateTypedRotationsOptions): RotationAssignment[] => {
-  const firstMonday = getMonday(parseDate(startDate));
+  const firstMonday = getMonday(parseLocalDate(startDate));
 
   return Array.from(
     {
@@ -185,13 +226,13 @@ const generateDispatcherRotations = ({
 
       const teamMember = teamMembers[teamMemberIndex];
 
-      const startDateString = formatDate(rotationStartDate);
+      const startDateString = formatLocalDate(rotationStartDate);
 
       return {
         id: `dispatcher-${startDateString}-${teamMember.id}`,
         teamMemberId: teamMember.id,
         startDate: startDateString,
-        endDate: formatDate(rotationEndDate),
+        endDate: formatLocalDate(rotationEndDate),
         type: "dispatcher",
       };
     },
@@ -203,8 +244,9 @@ const generateDeploymentRotations = ({
   startDate,
   numberOfWeeks,
   startIndex,
+  deploymentStartsWithT2,
 }: GenerateTypedRotationsOptions): RotationAssignment[] => {
-  const configStartDate = parseDate(startDate);
+  const configStartDate = parseLocalDate(startDate);
 
   const endExclusive = addDays(configStartDate, numberOfWeeks * 7);
 
@@ -213,27 +255,69 @@ const generateDeploymentRotations = ({
   const rotations: RotationAssignment[] = [];
 
   let deploymentDate = firstDeploymentDate;
-  let deploymentIndex = 0;
+
+  /*
+   * Zählt alle Deployment-Slots:
+   *
+   * Slot 0
+   * Slot 1
+   * Slot 2
+   * ...
+   *
+   * Jeder Slot liegt 14 Tage auseinander.
+   */
+  let deploymentSlotIndex = 0;
+
+  /*
+   * Wird ausschließlich dann erhöht,
+   * wenn Code Busters an der Reihe ist.
+   *
+   * Ein T2-Slot verbraucht also KEINEN
+   * Eintrag aus der internen Personenrotation.
+   */
+  let codeBustersDeploymentIndex = 0;
 
   while (deploymentDate < endExclusive) {
-    const teamMemberIndex = (startIndex + deploymentIndex) % teamMembers.length;
+    const date = formatLocalDate(deploymentDate);
 
-    const teamMember = teamMembers[teamMemberIndex];
+    const isT2Slot = deploymentStartsWithT2
+      ? deploymentSlotIndex % 2 === 0
+      : deploymentSlotIndex % 2 === 1;
 
-    const date = formatDate(deploymentDate);
+    if (isT2Slot) {
+      rotations.push({
+        id: `deployment-${date}-t2`,
+        teamMemberId: T2_TEAM_ROTATION_ID,
+        startDate: date,
+        endDate: date,
+        type: "deployment",
+        deploymentKind: "regular",
+      });
+    } else {
+      const teamMemberIndex =
+        (startIndex + codeBustersDeploymentIndex) % teamMembers.length;
 
-    rotations.push({
-      id: `deployment-${date}-${teamMember.id}`,
-      teamMemberId: teamMember.id,
-      startDate: date,
-      endDate: date,
-      type: "deployment",
-      deploymentKind: "regular",
-    });
+      const teamMember = teamMembers[teamMemberIndex];
 
+      rotations.push({
+        id: `deployment-${date}-${teamMember.id}`,
+        teamMemberId: teamMember.id,
+        startDate: date,
+        endDate: date,
+        type: "deployment",
+        deploymentKind: "regular",
+      });
+
+      codeBustersDeploymentIndex += 1;
+    }
+
+    /*
+     * Der nächste Deployment-Termin ist
+     * immer 14 Tage später.
+     */
     deploymentDate = addDays(deploymentDate, 14);
 
-    deploymentIndex += 1;
+    deploymentSlotIndex += 1;
   }
 
   return rotations;
@@ -245,6 +329,7 @@ export const generateRotations = ({
   numberOfWeeks,
   type,
   startIndex = 0,
+  deploymentStartsWithT2 = false,
 }: GenerateRotationsOptions): RotationAssignment[] => {
   if (teamMembers.length === 0 || numberOfWeeks <= 0) {
     return [];
@@ -255,6 +340,7 @@ export const generateRotations = ({
     startDate,
     numberOfWeeks,
     startIndex,
+    deploymentStartsWithT2,
   };
 
   if (type === "deployment") {

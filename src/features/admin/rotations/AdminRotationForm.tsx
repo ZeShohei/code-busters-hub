@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
+
+import { useRouter } from "next/navigation";
 
 import type { RotationConfig, TeamMember } from "@/types/team";
 
@@ -71,6 +72,10 @@ export const AdminRotationForm = ({
     initialStartTeamMemberId,
   );
 
+  const [deploymentStartsWithT2, setDeploymentStartsWithT2] = useState(
+    config.deploymentStartsWithT2,
+  );
+
   const [error, setError] = useState<string>();
 
   const [success, setSuccess] = useState<string>();
@@ -90,6 +95,8 @@ export const AdminRotationForm = ({
   const getTeamMember = (id: string) => {
     return activeTeamMembers.find((member) => member.id === id);
   };
+
+  const firstInternalTeamMember = getTeamMember(startTeamMemberId);
 
   const toggleParticipant = (teamMemberId: string) => {
     setSuccess(undefined);
@@ -144,10 +151,16 @@ export const AdminRotationForm = ({
 
     const result = await updateRotationConfig({
       type: config.type,
+
       startDate,
+
       numberOfWeeks,
+
       participantTeamMemberIds,
+
       startTeamMemberId,
+
+      deploymentStartsWithT2,
     });
 
     setIsSaving(false);
@@ -173,7 +186,7 @@ export const AdminRotationForm = ({
 
           <p>
             {isDeployment
-              ? "Teilnehmer und Reihenfolge der zweiwöchigen Deployment-Rotation verwalten."
+              ? "T2 Team und Code Busters wechseln sich bei den zweiwöchigen Deployments ab."
               : "Teilnehmer und Reihenfolge dieser Rotation verwalten. Änderungen gelten ab dem gewählten Datum."}
           </p>
         </div>
@@ -188,7 +201,7 @@ export const AdminRotationForm = ({
 
         <p>
           {isDeployment
-            ? "Reguläre Deployments finden alle zwei Wochen am Donnerstag statt. Das gewählte Datum definiert, ab wann diese Konfiguration gültig ist. Der tatsächliche erste Deployment-Termin wird automatisch auf den nächsten Donnerstag gelegt."
+            ? "Alle zwei Wochen findet donnerstags ein Deployment statt. T2 Team und Code Busters wechseln sich dabei ab. Bei einem Code-Busters-Termin wird die interne Personenrotation um genau eine Person weitergeschaltet."
             : "Beim Speichern wird die bestehende Historie nicht überschrieben. Die neue Konfiguration gilt erst ab dem angegebenen Datum."}
         </p>
       </div>
@@ -234,14 +247,50 @@ export const AdminRotationForm = ({
         </div>
       </div>
 
+      {isDeployment ? (
+        <div className={styles.field}>
+          <label htmlFor="deployment-first-team">
+            Erstes Deployment der neuen Konfiguration
+          </label>
+
+          <select
+            id="deployment-first-team"
+            value={deploymentStartsWithT2 ? "t2" : "code-busters"}
+            onChange={(event) => {
+              setDeploymentStartsWithT2(event.target.value === "t2");
+
+              setSuccess(undefined);
+
+              setError(undefined);
+            }}
+          >
+            <option value="t2">T2 Team</option>
+
+            <option value="code-busters">Code Busters</option>
+          </select>
+        </div>
+      ) : null}
+
       {isDeployment && firstDeploymentDate ? (
         <div className={styles.info}>
           <strong>Erster regulärer Deployment-Termin</strong>
 
           <p>
             {getWeekdayLabel(firstDeploymentDate)},{" "}
-            {formatDate(firstDeploymentDate)}. Danach folgen die regulären
-            Deployments jeweils im Abstand von 14 Tagen.
+            {formatDate(firstDeploymentDate)}
+            {" – "}
+            {deploymentStartsWithT2
+              ? "T2 Team"
+              : (firstInternalTeamMember?.displayName ?? "Code Busters")}
+            .
+          </p>
+
+          <p>
+            Danach:{" "}
+            {deploymentStartsWithT2
+              ? `${firstInternalTeamMember?.displayName ?? "Code Busters"} → T2 Team → nächste Code-Busters-Person → T2 Team`
+              : `T2 Team → nächste Code-Busters-Person → T2 Team`}
+            .
           </p>
         </div>
       ) : null}
@@ -312,7 +361,9 @@ export const AdminRotationForm = ({
 
       <div className={styles.field}>
         <label htmlFor={`${config.type}-start-member`}>
-          Erste Person der Rotation
+          {isDeployment
+            ? "Erste Code-Busters-Person"
+            : "Erste Person der Rotation"}
         </label>
 
         <select
@@ -323,6 +374,7 @@ export const AdminRotationForm = ({
             setStartTeamMemberId(event.target.value);
 
             setSuccess(undefined);
+
             setError(undefined);
           }}
         >

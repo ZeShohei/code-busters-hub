@@ -98,7 +98,11 @@ export const RotationConfigHistory = ({
                   </div>
 
                   <div>
-                    <dt>Erste Person</dt>
+                    <dt>
+                      {isDeployment
+                        ? "Erste Code-Busters-Person"
+                        : "Erste Person"}
+                    </dt>
 
                     <dd>
                       {startMemberId ? getTeamMemberName(startMemberId) : "–"}
@@ -117,19 +121,31 @@ export const RotationConfigHistory = ({
                   </div>
 
                   {isDeployment && firstDeploymentDate ? (
-                    <div>
-                      <dt>Erster regulärer Deployment-Termin</dt>
+                    <>
+                      <div>
+                        <dt>Erster Deployment-Termin</dt>
 
-                      <dd>{formatDate(firstDeploymentDate)}</dd>
-                    </div>
-                  ) : null}
+                        <dd>{formatDate(firstDeploymentDate)}</dd>
+                      </div>
 
-                  {isDeployment ? (
-                    <div>
-                      <dt>Rhythmus</dt>
+                      <div>
+                        <dt>Erste Zuständigkeit</dt>
 
-                      <dd>Donnerstag, alle 14 Tage</dd>
-                    </div>
+                        <dd>
+                          {config.deploymentStartsWithT2
+                            ? "T2 Team"
+                            : startMemberId
+                              ? getTeamMemberName(startMemberId)
+                              : "Code Busters"}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Rhythmus</dt>
+
+                        <dd>T2 Team ↔ Code Busters, alle 14 Tage</dd>
+                      </div>
+                    </>
                   ) : null}
                 </dl>
               </article>

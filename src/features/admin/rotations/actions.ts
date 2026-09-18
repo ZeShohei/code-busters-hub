@@ -20,6 +20,8 @@ interface SaveRotationConfigInput {
   numberOfWeeks: number;
   participantTeamMemberIds: string[];
   startTeamMemberId: string;
+
+  deploymentStartsWithT2: boolean;
 }
 
 interface CreateDeploymentExceptionInput {
@@ -111,6 +113,8 @@ const getRegularDeploymentRotations = async () => {
     startIndex: config.startIndex,
 
     type: "deployment",
+
+    deploymentStartsWithT2: config.deploymentStartsWithT2,
   }));
 
   return configs.flatMap((config, index) => {
@@ -130,6 +134,8 @@ const getRegularDeploymentRotations = async () => {
       type: "deployment",
 
       startIndex: config.startIndex,
+
+      deploymentStartsWithT2: config.deploymentStartsWithT2,
     });
 
     if (!nextConfig) {
@@ -218,15 +224,22 @@ export const updateRotationConfig = async (
           numberOfWeeks: input.numberOfWeeks,
 
           startIndex,
+
+          deploymentStartsWithT2:
+            input.type === "deployment" ? input.deploymentStartsWithT2 : false,
         },
 
         create: {
           type: input.type,
+
           startDate,
 
           numberOfWeeks: input.numberOfWeeks,
 
           startIndex,
+
+          deploymentStartsWithT2:
+            input.type === "deployment" ? input.deploymentStartsWithT2 : false,
         },
       });
 
@@ -241,6 +254,7 @@ export const updateRotationConfig = async (
           rotationConfigId: config.id,
 
           teamMemberId,
+
           position,
         })),
       });
@@ -273,9 +287,6 @@ export const createDeploymentException = async (
     };
   }
 
-  /*
-   * Reguläres Deployment verschieben
-   */
   if (input.type === "rescheduled") {
     if (!input.originalDate) {
       return {
@@ -291,13 +302,6 @@ export const createDeploymentException = async (
       };
     }
 
-    /*
-     * Nicht nur dem Frontend vertrauen.
-     *
-     * originalDate muss tatsächlich ein
-     * regulär generierter Deployment-Termin
-     * aus unserer Rotation sein.
-     */
     const regularDeployments = await getRegularDeploymentRotations();
 
     const regularDeployment = regularDeployments.find(
@@ -327,10 +331,6 @@ export const createDeploymentException = async (
     }
   }
 
-  /*
-   * Ein Sonderdeployment benötigt immer
-   * eine explizit zuständige Person.
-   */
   if (input.type === "special" && !input.teamMemberId) {
     return {
       success: false,
@@ -339,15 +339,11 @@ export const createDeploymentException = async (
     };
   }
 
-  /*
-   * Falls eine Person explizit angegeben
-   * wurde, muss diese existieren und aktiv
-   * sein.
-   */
   if (input.teamMemberId) {
     const teamMember = await prisma.teamMember.findFirst({
       where: {
         id: input.teamMemberId,
+
         active: true,
       },
 

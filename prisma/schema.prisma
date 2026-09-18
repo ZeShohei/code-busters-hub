@@ -165,6 +165,17 @@ model RotationConfig {
   numberOfWeeks Int
   startIndex    Int
 
+  /*
+   * Nur für Deployment relevant.
+   *
+   * true:
+   * T2 → Code Busters → T2 → Code Busters
+   *
+   * false:
+   * Code Busters → T2 → Code Busters → T2
+   */
+  deploymentStartsWithT2 Boolean @default(false)
+
   participants RotationParticipant[]
 
   createdAt DateTime @default(now())

@@ -54,6 +54,7 @@ export const RotationsOverview = ({
   teamMembers,
 }: RotationsOverviewProps) => {
   const router = useRouter();
+
   const pathname = usePathname();
 
   const searchParams = useSearchParams();
@@ -217,7 +218,7 @@ export const RotationsOverview = ({
           {filteredDeploymentRotations.length > 0 ? (
             <RotationList
               title="Deployment"
-              description="Deployment standardmäßig alle zwei Wochen am Donnerstag. Verschiebungen und Sonderdeployments werden separat berücksichtigt."
+              description="Alle zwei Wochen am Donnerstag. T2 Team und Code Busters wechseln sich ab; innerhalb der Code Busters rotiert die zuständige Person weiter."
               rotations={filteredDeploymentRotations}
               absences={absences}
               substitutions={substitutions}

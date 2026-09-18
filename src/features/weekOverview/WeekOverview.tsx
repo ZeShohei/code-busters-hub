@@ -9,8 +9,14 @@ import type {
   TeamMember,
 } from "@/types/team";
 
-import { resolveRotation } from "@/features/rotations/utils";
+import {
+  getRotationAssigneeName,
+  isT2TeamRotation,
+  resolveRotation,
+} from "@/features/rotations/utils";
+
 import { RotationStatusBadge } from "@/features/rotations/RotationStatusBadge";
+
 import { getTeamMemberName } from "@/features/team/utils";
 
 import {
@@ -46,6 +52,10 @@ const toDateString = (date: Date) => {
 };
 
 const getDeploymentKindLabel = (rotation: RotationAssignment) => {
+  if (isT2TeamRotation(rotation)) {
+    return "Deployment · T2";
+  }
+
   switch (rotation.deploymentKind) {
     case "special":
       return "Sonderdeployment";
@@ -72,12 +82,9 @@ export const WeekOverview = ({
   const weekDays = getWeekDays(selectedDate);
 
   const monday = weekDays[0];
+
   const friday = weekDays[weekDays.length - 1];
 
-  /*
-   * Dispatcher bleibt eine klassische
-   * Wochenrotation.
-   */
   const currentDispatcher = getCurrentRotation(dispatcherRotations, monday);
 
   const dispatcherResolution = currentDispatcher
@@ -168,12 +175,11 @@ export const WeekOverview = ({
         <article className={styles.rotationInfo}>
           <span>Deployments</span>
 
-          <strong>Am jeweiligen Tag</strong>
+          <strong>T2 ↔ Code Busters</strong>
 
           <p>
-            Reguläre Deployments finden alle zwei Wochen am Donnerstag statt.
-            Verschiebungen und Sonderdeployments werden am tatsächlichen Termin
-            angezeigt.
+            Alle zwei Wochen am Donnerstag. T2 Team und Code Busters wechseln
+            sich ab.
           </p>
         </article>
       </div>
@@ -186,11 +192,9 @@ export const WeekOverview = ({
             isDateInRange(absence.startDate, absence.endDate, day),
           );
 
-          const dayDeployments = deploymentRotations
-            .filter((rotation) => rotation.startDate === dayString)
-            .sort((first, second) =>
-              first.startDate.localeCompare(second.startDate),
-            );
+          const dayDeployments = deploymentRotations.filter(
+            (rotation) => rotation.startDate === dayString,
+          );
 
           const isToday = isSameDay(day, today);
 
@@ -216,15 +220,17 @@ export const WeekOverview = ({
                     substitutions,
                   );
 
-                  const assignedName = getTeamMemberName(
+                  const assignedName = getRotationAssigneeName(
                     resolution.assignedTeamMemberId,
                     teamMembers,
                   );
 
-                  const effectiveName = getTeamMemberName(
+                  const effectiveName = getRotationAssigneeName(
                     resolution.effectiveTeamMemberId,
                     teamMembers,
                   );
+
+                  const isT2 = isT2TeamRotation(rotation);
 
                   return (
                     <div key={rotation.id} className={styles.deployment}>
@@ -234,14 +240,16 @@ export const WeekOverview = ({
                         <span>{effectiveName}</span>
                       </div>
 
-                      <RotationStatusBadge
-                        resolution={resolution}
-                        effectiveTeamMemberName={
-                          resolution.status === "substitution"
-                            ? effectiveName
-                            : undefined
-                        }
-                      />
+                      {!isT2 ? (
+                        <RotationStatusBadge
+                          resolution={resolution}
+                          effectiveTeamMemberName={
+                            resolution.status === "substitution"
+                              ? effectiveName
+                              : undefined
+                          }
+                        />
+                      ) : null}
 
                       {resolution.status === "substitution" ? (
                         <span className={styles.deploymentMeta}>

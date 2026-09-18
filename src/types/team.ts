@@ -24,9 +24,6 @@ export interface Substitution {
 
   /*
    * Eindeutige fachliche Zuordnung.
-   * Wenn eine Vertretung für eine konkrete
-   * Abwesenheit gesucht wird, immer diese ID
-   * verwenden.
    */
   absenceId: string;
 
@@ -61,6 +58,8 @@ export interface RotationConfig {
   numberOfWeeks: number;
   startIndex: number;
   type: RotationAssignment["type"];
+
+  deploymentStartsWithT2: boolean;
 }
 
 export type DeploymentExceptionType = "rescheduled" | "special";
