@@ -26,27 +26,36 @@
 }
 
 .link {
-    color: #525252;
+    color: var(--color-text-secondary);
+
     text-decoration: none;
+
+    transition:
+            color 0.15s ease,
+            text-decoration-color 0.15s ease;
 }
 
 .link:hover {
+    color: var(--color-text-brand);
+
     text-decoration: underline;
 }
 
 .link:focus-visible {
-    outline: 0.125rem solid #2563eb;
+    outline: 0.1875rem solid var(--color-focus);
     outline-offset: 0.125rem;
 
-    border-radius: 0.125rem;
+    border-radius: var(--radius-sm);
 }
 
 .current {
-    color: #171717;
-    font-weight: 600;
+    color: var(--color-text-primary);
+
+    font-weight: 700;
 }
 
 .separator {
-    color: #a3a3a3;
+    color: var(--color-text-muted);
+
     font-size: 0.75rem;
 }

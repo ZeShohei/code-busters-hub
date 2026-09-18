@@ -5,12 +5,23 @@
 
     width: 100%;
     max-width: 45rem;
+
+    padding: 1.5rem;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    box-shadow: var(--shadow-sm);
 }
 
 .dateFields {
     display: grid;
     grid-template-columns:
     repeat(2, minmax(0, 1fr));
+
     gap: 1rem;
 }
 
@@ -21,6 +32,8 @@
 }
 
 .field label {
+    color: var(--color-text-primary);
+
     font-size: 0.875rem;
     font-weight: 600;
 }
@@ -28,43 +41,75 @@
 .field input,
 .field select {
     width: 100%;
+    min-height: 3rem;
 
     padding: 0.75rem;
 
-    border: 1px solid #d0d5dd;
-    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
 
-    background: #ffffff;
-    color: inherit;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    caret-color: var(--color-brand-primary);
 
     font: inherit;
+
+    transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
+}
+
+.field input::placeholder {
+    color: var(--color-text-placeholder);
+
+    opacity: 1;
+}
+
+.field input:hover:not(:disabled),
+.field select:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
 }
 
 .field input:focus,
 .field select:focus {
-    outline: 0.125rem solid #111111;
-    outline-offset: 0.125rem;
+    border-color: var(--color-brand-primary);
+
+    outline: none;
+
+    box-shadow:
+            0 0 0 0.1875rem
+            rgb(242 90 29 / 20%);
 }
 
 .field input:disabled,
 .field select:disabled {
+    border-color: var(--color-border-subtle);
+
+    background: var(--color-background-disabled);
+    color: var(--color-text-disabled);
+
     cursor: not-allowed;
-    opacity: 0.6;
+
+    opacity: 1;
 }
 
 .hint {
-    color: #667085;
+    color: var(--color-text-secondary);
+
     font-size: 0.8125rem;
 }
 
 .error {
     padding: 0.75rem 1rem;
 
-    border: 1px solid #fda29b;
-    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--color-border-error);
+    border-radius: var(--radius-md);
 
-    background: #fff1f0;
-    color: #b42318;
+    background: var(--color-background-error);
+    color: var(--color-text-error);
 
     font-size: 0.875rem;
 }
@@ -79,31 +124,56 @@
 .secondaryButton {
     padding: 0.625rem 1rem;
 
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
 
     font: inherit;
-    font-weight: 600;
+    font-weight: 700;
 
     cursor: pointer;
+
+    transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
 }
 
 .primaryButton {
-    border: 1px solid #111111;
+    border: 0.0625rem solid var(--color-brand-primary);
 
-    background: #111111;
+    background: var(--color-brand-primary);
     color: #ffffff;
 }
 
-.secondaryButton {
-    border: 1px solid #d0d5dd;
+.primaryButton:hover:not(:disabled) {
+    border-color: var(--color-brand-primary-hover);
 
-    background: #ffffff;
-    color: inherit;
+    background: var(--color-brand-primary-hover);
+}
+
+.secondaryButton {
+    border: 0.0625rem solid var(--color-border-default);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+}
+
+.secondaryButton:hover:not(:disabled) {
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-background-primary-subtle);
+    color: var(--color-text-brand);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+    outline: 0.1875rem solid var(--color-focus);
+    outline-offset: 0.125rem;
 }
 
 .primaryButton:disabled,
 .secondaryButton:disabled {
     cursor: not-allowed;
+
     opacity: 0.5;
 }
 

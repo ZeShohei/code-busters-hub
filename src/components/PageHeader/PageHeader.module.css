@@ -5,9 +5,10 @@
 }
 
 .eyebrow {
-    color: #666;
+    color: var(--color-text-brand);
+
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .main {
@@ -24,6 +25,8 @@
 }
 
 .text h1 {
+    color: var(--color-text-primary);
+
     font-size: 2rem;
     line-height: 1.2;
 }
@@ -31,7 +34,8 @@
 .description {
     max-width: 40rem;
 
-    color: #666;
+    color: var(--color-text-secondary);
+
     line-height: 1.5;
 }
 
