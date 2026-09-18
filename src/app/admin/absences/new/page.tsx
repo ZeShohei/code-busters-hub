@@ -32,7 +32,9 @@ export default async function NewAbsencePage() {
         description="Erfasse eine neue Abwesenheit und optional die zuständige Vertretung."
       />
 
-      <AdminAbsenceForm teamMembers={teamMembers} />
+      <AdminAbsenceForm
+        teamMembers={teamMembers.filter((member) => member.active)}
+      />
     </div>
   );
 }
