@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/features/admin/requireAdmin";
+
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
@@ -91,6 +92,15 @@ const revalidateTeamPages = () => {
   revalidatePath("/admin/rotations");
 };
 
+const getActiveAdminCount = async () => {
+  return prisma.teamMember.count({
+    where: {
+      active: true,
+      role: "admin",
+    },
+  });
+};
+
 export const createTeamMember = async (
   input: SaveTeamMemberInput,
 ): Promise<ActionResult> => {
@@ -119,6 +129,7 @@ export const createTeamMember = async (
           },
         ],
       },
+
       select: {
         email: true,
         username: true,
@@ -129,12 +140,14 @@ export const createTeamMember = async (
       if (existingUser.email === normalized.email) {
         return {
           success: false,
+
           error: "Diese E-Mail-Adresse wird bereits verwendet.",
         };
       }
 
       return {
         success: false,
+
         error: "Dieser Benutzername wird bereits verwendet.",
       };
     }
@@ -144,12 +157,19 @@ export const createTeamMember = async (
     await prisma.teamMember.create({
       data: {
         firstName: normalized.firstName,
+
         lastName: normalized.lastName,
+
         displayName: `${normalized.firstName} ${normalized.lastName}`,
+
         email: normalized.email,
+
         username: normalized.username,
+
         passwordHash,
+
         active: true,
+
         role: normalized.role,
       },
     });
@@ -164,6 +184,7 @@ export const createTeamMember = async (
 
     return {
       success: false,
+
       error: "Das Teammitglied konnte nicht angelegt werden.",
     };
   }
@@ -187,6 +208,7 @@ export const updateTeamMember = async (
   if (id === currentUser.id && input.role !== "admin") {
     return {
       success: false,
+
       error: "Du kannst dir deine eigene Admin-Rolle nicht entziehen.",
     };
   }
@@ -198,13 +220,42 @@ export const updateTeamMember = async (
       where: {
         id,
       },
+
+      select: {
+        id: true,
+        role: true,
+        active: true,
+      },
     });
 
     if (!existingMember) {
       return {
         success: false,
+
         error: "Das Teammitglied wurde nicht gefunden.",
       };
+    }
+
+    /*
+     * Wenn ein aktiver Admin zu einem normalen
+     * Mitglied gemacht werden soll, muss mindestens
+     * ein weiterer aktiver Admin vorhanden sein.
+     */
+    if (
+      existingMember.active &&
+      existingMember.role === "admin" &&
+      normalized.role !== "admin"
+    ) {
+      const activeAdminCount = await getActiveAdminCount();
+
+      if (activeAdminCount <= 1) {
+        return {
+          success: false,
+
+          error:
+            "Der letzte aktive Administrator kann nicht zum Mitglied herabgestuft werden.",
+        };
+      }
     }
 
     const conflictingMember = await prisma.teamMember.findFirst({
@@ -212,6 +263,7 @@ export const updateTeamMember = async (
         id: {
           not: id,
         },
+
         OR: [
           {
             email: normalized.email,
@@ -221,6 +273,7 @@ export const updateTeamMember = async (
           },
         ],
       },
+
       select: {
         email: true,
         username: true,
@@ -231,12 +284,14 @@ export const updateTeamMember = async (
       if (conflictingMember.email === normalized.email) {
         return {
           success: false,
+
           error: "Diese E-Mail-Adresse wird bereits verwendet.",
         };
       }
 
       return {
         success: false,
+
         error: "Dieser Benutzername wird bereits verwendet.",
       };
     }
@@ -250,12 +305,18 @@ export const updateTeamMember = async (
         where: {
           id,
         },
+
         data: {
           firstName: normalized.firstName,
+
           lastName: normalized.lastName,
+
           displayName: `${normalized.firstName} ${normalized.lastName}`,
+
           email: normalized.email,
+
           username: normalized.username,
+
           role: normalized.role,
 
           ...(passwordHash
@@ -266,6 +327,13 @@ export const updateTeamMember = async (
         },
       });
 
+      /*
+       * Nach einer Passwortänderung werden
+       * bestehende Sessions beendet.
+       *
+       * Der Benutzer muss sich danach mit
+       * dem neuen Passwort erneut anmelden.
+       */
       if (passwordHash) {
         await transaction.authSession.deleteMany({
           where: {
@@ -285,6 +353,7 @@ export const updateTeamMember = async (
 
     return {
       success: false,
+
       error: "Das Teammitglied konnte nicht aktualisiert werden.",
     };
   }
@@ -299,6 +368,7 @@ export const setTeamMemberActive = async (
   if (id === currentUser.id && !active) {
     return {
       success: false,
+
       error: "Du kannst deinen eigenen Benutzer nicht deaktivieren.",
     };
   }
@@ -308,13 +378,37 @@ export const setTeamMemberActive = async (
       where: {
         id,
       },
+
+      select: {
+        id: true,
+        active: true,
+        role: true,
+      },
     });
 
     if (!teamMember) {
       return {
         success: false,
+
         error: "Das Teammitglied wurde nicht gefunden.",
       };
+    }
+
+    /*
+     * Der letzte aktive Admin darf nicht
+     * deaktiviert werden.
+     */
+    if (!active && teamMember.active && teamMember.role === "admin") {
+      const activeAdminCount = await getActiveAdminCount();
+
+      if (activeAdminCount <= 1) {
+        return {
+          success: false,
+
+          error:
+            "Der letzte aktive Administrator kann nicht deaktiviert werden.",
+        };
+      }
     }
 
     await prisma.$transaction(async (transaction) => {
@@ -322,11 +416,16 @@ export const setTeamMemberActive = async (
         where: {
           id,
         },
+
         data: {
           active,
         },
       });
 
+      /*
+       * Beim Deaktivieren werden bestehende
+       * Sessions ebenfalls beendet.
+       */
       if (!active) {
         await transaction.authSession.deleteMany({
           where: {
@@ -346,6 +445,7 @@ export const setTeamMemberActive = async (
 
     return {
       success: false,
+
       error: "Der Status des Teammitglieds konnte nicht geändert werden.",
     };
   }
