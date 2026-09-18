@@ -1,14 +1,54 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { prisma } from "@/lib/prisma";
-import { createSession, deleteCurrentSession } from "@/lib/session";
+import {
+  clearLoginThrottle,
+  isLoginAllowed,
+  recordFailedLogin,
+} from "@/lib/loginThrottle";
+
 import { verifyPassword } from "@/lib/password";
+import { prisma } from "@/lib/prisma";
+
+import { createSession, deleteCurrentSession } from "@/lib/session";
 
 interface LoginState {
   error?: string;
 }
+
+const INVALID_LOGIN_MESSAGE = "Benutzername oder Passwort ist ungültig.";
+
+const BLOCKED_LOGIN_MESSAGE =
+  "Zu viele fehlgeschlagene Anmeldeversuche. Bitte versuche es in einigen Minuten erneut.";
+
+const getClientAddress = async () => {
+  const requestHeaders = await headers();
+
+  const forwardedFor = requestHeaders.get("x-forwarded-for");
+
+  if (forwardedFor) {
+    const firstAddress = forwardedFor.split(",")[0]?.trim();
+
+    if (firstAddress) {
+      return firstAddress;
+    }
+  }
+
+  const realIp = requestHeaders.get("x-real-ip");
+
+  if (realIp) {
+    return realIp;
+  }
+
+  /*
+   * Lokal bzw. ohne vorgeschalteten
+   * Reverse Proxy steht eventuell keine
+   * Client-IP zur Verfügung.
+   */
+  return "unknown";
+};
 
 export const loginAction = async (
   _previousState: LoginState,
@@ -34,6 +74,19 @@ export const loginAction = async (
     };
   }
 
+  const clientAddress = await getClientAddress();
+
+  const loginAllowed = await isLoginAllowed({
+    username,
+    clientAddress,
+  });
+
+  if (!loginAllowed) {
+    return {
+      error: BLOCKED_LOGIN_MESSAGE,
+    };
+  }
+
   const teamMember = await prisma.teamMember.findUnique({
     where: {
       username,
@@ -45,24 +98,34 @@ export const loginAction = async (
     },
   });
 
-  /*
-   * Absichtlich dieselbe Fehlermeldung
-   * für unbekannte Benutzer und falsche
-   * Passwörter.
-   */
   if (!teamMember || !teamMember.active || !teamMember.passwordHash) {
+    await recordFailedLogin({
+      username,
+      clientAddress,
+    });
+
     return {
-      error: "Benutzername oder Passwort ist ungültig.",
+      error: INVALID_LOGIN_MESSAGE,
     };
   }
 
   const passwordValid = await verifyPassword(password, teamMember.passwordHash);
 
   if (!passwordValid) {
+    await recordFailedLogin({
+      username,
+      clientAddress,
+    });
+
     return {
-      error: "Benutzername oder Passwort ist ungültig.",
+      error: INVALID_LOGIN_MESSAGE,
     };
   }
+
+  await clearLoginThrottle({
+    username,
+    clientAddress,
+  });
 
   await createSession(teamMember.id);
 

@@ -35,10 +35,10 @@ model TeamMember {
   username     String? @unique
   passwordHash String?
 
-  absences                Absence[]
-  substitutionsByMe       Substitution[]        @relation("SubstituteTeamMember")
-  rotationParticipations  RotationParticipant[]
-  sessions                AuthSession[]
+  absences               Absence[]
+  substitutionsByMe      Substitution[]        @relation("SubstituteTeamMember")
+  rotationParticipations RotationParticipant[]
+  sessions               AuthSession[]
 
   createdAt DateTime @default(now())
 }
@@ -56,6 +56,22 @@ model AuthSession {
 
   @@index([teamMemberId])
   @@index([expiresAt])
+}
+
+model LoginThrottle {
+  id String @id @default(uuid())
+
+  identifierHash String @unique
+
+  failedAttempts  Int      @default(0)
+  windowStartedAt DateTime
+  blockedUntil    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([blockedUntil])
+  @@index([updatedAt])
 }
 
 model Absence {
