@@ -1,19 +1,20 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 2.5rem;
 }
 
-.rotations {
+.rotationSection {
     display: grid;
     grid-template-columns:
-    repeat(2, minmax(0, 1fr));
+    minmax(0, 1.25fr)
+    minmax(20rem, 0.75fr);
     gap: 1.5rem;
     align-items: start;
 }
 
 @media (max-width: 70rem) {
-    .rotations {
+    .rotationSection {
         grid-template-columns: 1fr;
     }
 }
