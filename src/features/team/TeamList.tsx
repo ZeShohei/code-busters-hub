@@ -1,11 +1,24 @@
 "use client";
 
 import Link from "next/link";
+
 import { useMemo, useState } from "react";
 
-import type { Absence, RotationResolution, TeamMember } from "@/types/team";
+import type {
+  Absence,
+  RotationAssignment,
+  RotationResolution,
+  TeamMember,
+} from "@/types/team";
+
+import { formatDate } from "@/utils/date";
 
 import styles from "./TeamList.module.css";
+
+interface DeploymentResolutionItem {
+  rotation: RotationAssignment;
+  resolution: RotationResolution;
+}
 
 interface TeamListProps {
   teamMembers: TeamMember[];
@@ -13,7 +26,7 @@ interface TeamListProps {
   dispatcherParticipantIds: string[];
   deploymentParticipantIds: string[];
   dispatcherResolution?: RotationResolution;
-  deploymentResolution?: RotationResolution;
+  deploymentResolutionsThisWeek: DeploymentResolutionItem[];
 }
 
 export const TeamList = ({
@@ -22,7 +35,7 @@ export const TeamList = ({
   dispatcherParticipantIds,
   deploymentParticipantIds,
   dispatcherResolution,
-  deploymentResolution,
+  deploymentResolutionsThisWeek,
 }: TeamListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -108,21 +121,41 @@ export const TeamList = ({
             const isAssignedDispatcher =
               dispatcherResolution?.assignedTeamMemberId === teamMember.id;
 
-            const isEffectiveDeployment =
-              deploymentResolution?.effectiveTeamMemberId === teamMember.id;
-
-            const isAssignedDeployment =
-              deploymentResolution?.assignedTeamMemberId === teamMember.id;
-
             const isSubstitutedDispatcher =
               dispatcherResolution?.status === "substitution" &&
               isAssignedDispatcher &&
               !isEffectiveDispatcher;
 
-            const isSubstitutedDeployment =
-              deploymentResolution?.status === "substitution" &&
-              isAssignedDeployment &&
-              !isEffectiveDeployment;
+            /*
+             * Ein Teammitglied kann innerhalb einer Woche
+             * theoretisch für mehrere Deployments relevant sein,
+             * z. B. regulär + Sonderdeployment.
+             */
+            const effectiveDeployments = deploymentResolutionsThisWeek.filter(
+              ({ resolution }) =>
+                resolution.effectiveTeamMemberId === teamMember.id,
+            );
+
+            const substitutedDeployments = deploymentResolutionsThisWeek.filter(
+              ({ resolution }) =>
+                resolution.status === "substitution" &&
+                resolution.assignedTeamMemberId === teamMember.id &&
+                resolution.effectiveTeamMemberId !== teamMember.id,
+            );
+
+            const regularDeployments = effectiveDeployments.filter(
+              ({ resolution }) => resolution.status === "regular",
+            );
+
+            const deploymentSubstitutions = effectiveDeployments.filter(
+              ({ resolution }) => resolution.status === "substitution",
+            );
+
+            const hasCurrentResponsibility =
+              isEffectiveDispatcher ||
+              effectiveDeployments.length > 0 ||
+              isSubstitutedDispatcher ||
+              substitutedDeployments.length > 0;
 
             return (
               <article key={teamMember.id} className={styles.teamMember}>
@@ -171,17 +204,17 @@ export const TeamList = ({
                   <span className={styles.label}>Rotationen</span>
 
                   <div className={styles.badges}>
-                    {participatesInDispatcher && (
+                    {participatesInDispatcher ? (
                       <span className={styles.badge}>Dispatcher</span>
-                    )}
+                    ) : null}
 
-                    {participatesInDeployment && (
+                    {participatesInDeployment ? (
                       <span className={styles.badge}>Deployment</span>
-                    )}
+                    ) : null}
 
-                    {!participatesInDispatcher && !participatesInDeployment && (
+                    {!participatesInDispatcher && !participatesInDeployment ? (
                       <span className={styles.muted}>Keine Rotation</span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -189,7 +222,7 @@ export const TeamList = ({
                   <span className={styles.label}>Diese Woche</span>
 
                   <div className={styles.badges}>
-                    {isEffectiveDispatcher && (
+                    {isEffectiveDispatcher ? (
                       <span
                         className={`${styles.badge} ${
                           dispatcherResolution?.status === "substitution"
@@ -201,46 +234,46 @@ export const TeamList = ({
                           ? "Dispatcher-Vertretung"
                           : "Dispatcher"}
                       </span>
-                    )}
+                    ) : null}
 
-                    {isEffectiveDeployment && (
+                    {regularDeployments.map(({ rotation }) => (
                       <span
-                        className={`${styles.badge} ${
-                          deploymentResolution?.status === "substitution"
-                            ? styles.badgeSubstitution
-                            : styles.badgeCurrent
-                        }`}
+                        key={`deployment-regular-${rotation.id}`}
+                        className={`${styles.badge} ${styles.badgeCurrent}`}
                       >
-                        {deploymentResolution?.status === "substitution"
-                          ? "Deployment-Vertretung"
-                          : "Deployment"}
+                        Deployment {formatDate(rotation.startDate)}
                       </span>
-                    )}
+                    ))}
 
-                    {isSubstitutedDispatcher && (
+                    {deploymentSubstitutions.map(({ rotation }) => (
+                      <span
+                        key={`deployment-substitution-${rotation.id}`}
+                        className={`${styles.badge} ${styles.badgeSubstitution}`}
+                      >
+                        Deployment-Vertretung {formatDate(rotation.startDate)}
+                      </span>
+                    ))}
+
+                    {isSubstitutedDispatcher ? (
                       <span
                         className={`${styles.badge} ${styles.badgeReplaced}`}
                       >
                         Dispatcher vertreten
                       </span>
-                    )}
+                    ) : null}
 
-                    {isSubstitutedDeployment && (
+                    {substitutedDeployments.map(({ rotation }) => (
                       <span
+                        key={`deployment-replaced-${rotation.id}`}
                         className={`${styles.badge} ${styles.badgeReplaced}`}
                       >
-                        Deployment vertreten
+                        Deployment vertreten {formatDate(rotation.startDate)}
                       </span>
-                    )}
+                    ))}
 
-                    {!isEffectiveDispatcher &&
-                      !isEffectiveDeployment &&
-                      !isSubstitutedDispatcher &&
-                      !isSubstitutedDeployment && (
-                        <span className={styles.muted}>
-                          Keine Verantwortung
-                        </span>
-                      )}
+                    {!hasCurrentResponsibility ? (
+                      <span className={styles.muted}>Keine Verantwortung</span>
+                    ) : null}
                   </div>
                 </div>
               </article>
