@@ -18,18 +18,22 @@ enum RotationType {
   deployment
 }
 
+enum TeamMemberRole {
+  admin
+  member
+}
+
 model TeamMember {
-  id          String  @id @default(uuid())
+  id          String         @id @default(uuid())
   firstName   String
   lastName    String
   displayName String
-  email       String  @unique
-  active      Boolean @default(true)
+  email       String         @unique
+  active      Boolean        @default(true)
+  role        TeamMemberRole @default(member)
 
-  absences Absence[]
-
-  substitutionsByMe Substitution[] @relation("SubstituteTeamMember")
-
+  absences               Absence[]
+  substitutionsByMe      Substitution[]        @relation("SubstituteTeamMember")
   rotationParticipations RotationParticipant[]
 
   createdAt DateTime @default(now())
@@ -40,10 +44,9 @@ model Absence {
   teamMemberId String
   teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
 
-  startDate DateTime @db.Date
-  endDate   DateTime @db.Date
-
-  type AbsenceType
+  startDate DateTime    @db.Date
+  endDate   DateTime    @db.Date
+  type      AbsenceType
 
   substitution Substitution?
 
@@ -53,11 +56,11 @@ model Absence {
 model Substitution {
   id String @id @default(uuid())
 
-  absenceId String @unique
+  absenceId String  @unique
   absence   Absence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
 
   substituteTeamMemberId String
-  substituteTeamMember TeamMember @relation("SubstituteTeamMember", fields: [substituteTeamMemberId], references: [id], onDelete: Cascade)
+  substituteTeamMember   TeamMember @relation("SubstituteTeamMember", fields: [substituteTeamMemberId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
@@ -65,9 +68,8 @@ model Substitution {
 model RotationConfig {
   id String @id @default(uuid())
 
-  type RotationType
-
-  startDate     DateTime @db.Date
+  type          RotationType
+  startDate     DateTime     @db.Date
   numberOfWeeks Int
   startIndex    Int
 

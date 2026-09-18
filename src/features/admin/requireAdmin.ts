@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 export const requireAdmin = async () => {
   const user = await getCurrentUser();
 
-  if (!user.isAdmin) {
+  if (!user || user.role !== "admin") {
     notFound();
   }
 
