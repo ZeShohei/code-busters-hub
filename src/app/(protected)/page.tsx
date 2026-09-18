@@ -6,14 +6,27 @@ import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { getAppData } from "@/data/appData";
 
 import { UpcomingAbsences } from "@/features/absences/UpcomingAbsences";
+
+import {
+  ActionRequired,
+  type ActionRequiredItem,
+} from "@/features/dashboard/ActionRequired";
+
+import {
+  VacationHandovers,
+  type VacationHandoverDashboardItem,
+} from "@/features/dashboard/VacationHandovers";
+
 import { resolveRotation } from "@/features/rotations/utils";
 import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
 
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 import {
   formatDate,
+  getCalendarWeek,
   getCurrentRotation,
   getDateRangeStatus,
   isDateAfter,
@@ -35,6 +48,10 @@ const getAbsenceTypeLabel = (type: "vacation" | "sickLeave" | "other") => {
   }
 };
 
+const toDateString = (date: Date) => {
+  return date.toISOString().slice(0, 10);
+};
+
 export default async function Home() {
   const currentUser = await getCurrentUser();
 
@@ -42,13 +59,48 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const {
-    teamMembers,
-    absences,
-    substitutions,
-    dispatcherRotations,
-    deploymentRotations,
-  } = await getAppData();
+  const [
+    {
+      teamMembers,
+      absences,
+      substitutions,
+      dispatcherRotations,
+      deploymentRotations,
+    },
+    vacationRows,
+  ] = await Promise.all([
+    getAppData(),
+
+    prisma.absence.findMany({
+      where: {
+        type: "vacation",
+      },
+
+      include: {
+        teamMember: true,
+
+        substitution: {
+          include: {
+            substituteTeamMember: true,
+          },
+        },
+
+        vacationHandover: {
+          include: {
+            tasks: {
+              orderBy: {
+                position: "asc",
+              },
+            },
+          },
+        },
+      },
+
+      orderBy: {
+        startDate: "asc",
+      },
+    }),
+  ]);
 
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
 
@@ -111,7 +163,7 @@ export default async function Home() {
   })();
 
   /*
-   * Eigene nächste bzw. aktuelle Abwesenheit
+   * Eigene Abwesenheit
    */
 
   const ownRelevantAbsences = absences
@@ -129,7 +181,7 @@ export default async function Home() {
     : undefined;
 
   /*
-   * Vertretungen, die der aktuelle User übernimmt
+   * Eigene Vertretungen
    */
 
   const ownSubstitutions = substitutions
@@ -148,7 +200,7 @@ export default async function Home() {
     : undefined;
 
   /*
-   * Teamübersicht
+   * Allgemeiner Teamstatus
    */
 
   const currentAbsences = absences.filter((absence) =>
@@ -159,6 +211,158 @@ export default async function Home() {
     .filter((absence) => isDateAfter(absence.startDate))
     .sort((first, second) => first.startDate.localeCompare(second.startDate))
     .slice(0, 3);
+
+  /*
+   * Handlungsbedarf:
+   * unbesetzte aktuelle oder kommende Rotationen
+   */
+
+  const uncoveredRotationItems: ActionRequiredItem[] = [
+    ...dispatcherRotations,
+    ...deploymentRotations,
+  ]
+    .filter(
+      (rotation) =>
+        getDateRangeStatus(rotation.startDate, rotation.endDate) !== "past",
+    )
+    .sort((first, second) => first.startDate.localeCompare(second.startDate))
+    .map((rotation) => {
+      const resolution = resolveRotation(rotation, absences, substitutions);
+
+      return {
+        rotation,
+        resolution,
+      };
+    })
+    .filter(({ resolution }) => resolution.status === "uncovered")
+    .slice(0, 5)
+    .map(({ rotation, resolution }) => {
+      const assignedName = getTeamMemberName(
+        resolution.assignedTeamMemberId,
+        teamMembers,
+      );
+
+      const rotationLabel =
+        rotation.type === "dispatcher" ? "Dispatcher" : "Deployment";
+
+      return {
+        id: `rotation-${rotation.type}-${rotation.id}`,
+        title: `${rotationLabel} in KW ${getCalendarWeek(
+          rotation.startDate,
+        )} unbesetzt`,
+        description: `${assignedName} ist in diesem Zeitraum abwesend und es ist keine Vertretung eingetragen.`,
+        meta: `${formatDate(
+          rotation.startDate,
+        )} – ${formatDate(rotation.endDate)}`,
+        href: "/absences?status=upcoming",
+        actionLabel: "Abwesenheiten ansehen",
+      };
+    });
+
+  /*
+   * Urlaubsübergaben für den aktuellen User
+   */
+
+  const relevantVacationRows = vacationRows.filter((absence) => {
+    const startDate = toDateString(absence.startDate);
+
+    const endDate = toDateString(absence.endDate);
+
+    const status = getDateRangeStatus(startDate, endDate);
+
+    if (status === "past") {
+      return false;
+    }
+
+    return (
+      absence.teamMemberId === currentUser.id ||
+      absence.substitution?.substituteTeamMemberId === currentUser.id
+    );
+  });
+
+  const ownVacationActionItems: ActionRequiredItem[] = relevantVacationRows
+    .filter((absence) => absence.teamMemberId === currentUser.id)
+    .flatMap((absence) => {
+      const startDate = toDateString(absence.startDate);
+
+      const endDate = toDateString(absence.endDate);
+
+      const status = getDateRangeStatus(startDate, endDate);
+
+      const items: ActionRequiredItem[] = [];
+
+      if (!absence.substitution && status === "upcoming") {
+        items.push({
+          id: `vacation-substitute-${absence.id}`,
+          title: "Vertretung für deinen Urlaub fehlt",
+          description:
+            "Für deinen kommenden Urlaub ist noch keine Vertretung eingetragen.",
+          meta: `${formatDate(startDate)} – ${formatDate(endDate)}`,
+          href: `/absences/${absence.id}/edit`,
+          actionLabel: "Vertretung eintragen",
+        });
+      }
+
+      if (absence.substitution && !absence.vacationHandover) {
+        items.push({
+          id: `vacation-handover-${absence.id}`,
+          title: "Urlaubsübergabe fehlt",
+          description: `${absence.substitution.substituteTeamMember.displayName} ist als Vertretung eingetragen, aber es wurde noch keine Übergabe erstellt.`,
+          meta: `${formatDate(startDate)} – ${formatDate(endDate)}`,
+          href: `/absences/${absence.id}/handover`,
+          actionLabel: "Übergabe erstellen",
+        });
+      }
+
+      return items;
+    });
+
+  const actionRequiredItems = [
+    ...ownVacationActionItems,
+    ...uncoveredRotationItems,
+  ];
+
+  /*
+   * Übergaben, bei denen der aktuelle User
+   * als Vertretung eingetragen ist.
+   */
+
+  const vacationHandovers: VacationHandoverDashboardItem[] =
+    relevantVacationRows
+      .filter(
+        (absence) =>
+          absence.substitution?.substituteTeamMemberId === currentUser.id,
+      )
+      .map((absence) => {
+        const handover = absence.vacationHandover;
+
+        const firstTaskWithNextStep = handover?.tasks.find((task) =>
+          task.nextSteps?.trim(),
+        );
+
+        return {
+          absenceId: absence.id,
+
+          vacationerName: absence.teamMember.displayName,
+
+          startDate: toDateString(absence.startDate),
+
+          endDate: toDateString(absence.endDate),
+
+          hasHandover: Boolean(handover),
+
+          taskCount: handover?.tasks.length ?? 0,
+
+          emergencyContact: handover?.emergencyContact ?? undefined,
+
+          nextStep: firstTaskWithNextStep?.nextSteps ?? undefined,
+
+          knownRisks: handover?.knownRisks ?? undefined,
+
+          deploymentPlan: handover?.deploymentPlan ?? undefined,
+        };
+      })
+      .sort((first, second) => first.startDate.localeCompare(second.startDate));
 
   return (
     <section className={styles.dashboard}>
@@ -242,6 +446,10 @@ export default async function Home() {
           />
         </div>
       </section>
+
+      <ActionRequired items={actionRequiredItems} />
+
+      <VacationHandovers items={vacationHandovers} />
 
       <section className={styles.section}>
         <div className={styles.sectionHeader}>

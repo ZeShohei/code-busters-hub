@@ -1,0 +1,278 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.header h2 {
+    color: var(--color-text-primary);
+
+    font-size: 1.25rem;
+}
+
+.header p {
+    color: var(--color-text-secondary);
+
+    font-size: 0.875rem;
+}
+
+.list {
+    display: grid;
+    grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+    gap: 1rem;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    padding: 1.25rem;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-background-surface);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.cardHeader > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.cardHeader > div > span {
+    color: var(--color-text-secondary);
+
+    font-size: 0.75rem;
+}
+
+.cardHeader strong {
+    color: var(--color-text-primary);
+
+    font-size: 1rem;
+}
+
+.readyBadge,
+.missingBadge {
+    display: inline-flex;
+    align-items: center;
+
+    flex-shrink: 0;
+
+    padding: 0.25rem 0.5rem;
+
+    border-radius: var(--radius-round);
+
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.readyBadge {
+    background: var(--color-background-success);
+    color: var(--color-text-success);
+}
+
+.missingBadge {
+    background: var(--color-background-warning);
+    color: var(--color-text-warning);
+}
+
+.period {
+    color: var(--color-text-secondary);
+
+    font-size: 0.875rem;
+}
+
+.details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.detail {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    padding-bottom: 0.75rem;
+
+    border-bottom: 0.0625rem solid var(--color-border-subtle);
+}
+
+.detail span {
+    color: var(--color-text-secondary);
+
+    font-size: 0.8125rem;
+}
+
+.detail strong {
+    color: var(--color-text-primary);
+
+    text-align: right;
+
+    font-size: 0.875rem;
+}
+
+.highlight,
+.warning,
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    padding: 0.875rem;
+
+    border-radius: var(--radius-md);
+}
+
+.highlight {
+    background: var(--color-background-info);
+}
+
+.warning {
+    background: var(--color-background-warning);
+}
+
+.info {
+    background: var(--color-background-subtle);
+}
+
+.highlight span,
+.warning span,
+.info span {
+    color: var(--color-text-secondary);
+
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.highlight strong {
+    color: var(--color-text-info);
+
+    font-size: 0.875rem;
+}
+
+.warning p {
+    color: var(--color-text-warning);
+
+    font-size: 0.875rem;
+
+    white-space: pre-wrap;
+}
+
+.info p {
+    color: var(--color-text-primary);
+
+    font-size: 0.875rem;
+
+    white-space: pre-wrap;
+}
+
+.noHandover {
+    color: var(--color-text-secondary);
+
+    font-size: 0.875rem;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-top: auto;
+}
+
+.link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 2.5rem;
+
+    padding: 0.5rem 0.875rem;
+
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    font-size: 0.8125rem;
+    font-weight: 700;
+
+    text-decoration: none;
+
+    transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
+}
+
+.link:hover {
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-background-primary-subtle);
+    color: var(--color-text-brand);
+}
+
+.link:focus-visible {
+    outline: 0.1875rem solid var(--color-focus);
+    outline-offset: 0.125rem;
+}
+
+.empty {
+    color: var(--color-text-muted);
+
+    font-size: 0.875rem;
+}
+
+@media (max-width: 64rem) {
+    .list {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 40rem) {
+    .cardHeader {
+        flex-direction: column;
+    }
+
+    .detail {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .detail strong {
+        text-align: left;
+    }
+
+    .actions,
+    .link {
+        width: 100%;
+    }
+}
