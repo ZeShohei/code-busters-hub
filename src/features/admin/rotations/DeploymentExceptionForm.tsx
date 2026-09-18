@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 
 import { useRouter } from "next/navigation";
 
+import { getRotationAssigneeName } from "@/features/rotations/utils";
+
 import type {
   DeploymentException,
   DeploymentExceptionType,
@@ -54,14 +56,12 @@ export const DeploymentExceptionForm = ({
   const [deletingId, setDeletingId] = useState<string>();
 
   /*
-   * Nur echte, reguläre und noch nicht vergangene
-   * Deployment-Termine dürfen verschoben werden.
+   * Nur noch nicht vergangene reguläre Deployments
+   * dürfen verschoben werden.
    *
-   * Bereits verschobene Termine haben durch appData
-   * deploymentKind === "rescheduled" und fallen hier
-   * automatisch heraus.
-   *
-   * Sonderdeployments werden ebenfalls ausgeschlossen.
+   * Bereits verschobene Deployments haben
+   * deploymentKind === "rescheduled" und werden
+   * deshalb hier nicht erneut angeboten.
    */
   const availableRegularDeployments = deploymentRotations
     .filter(
@@ -82,8 +82,38 @@ export const DeploymentExceptionForm = ({
     );
   };
 
-  const getRegularDeploymentTeamMemberName = (rotation: RotationAssignment) => {
-    return getTeamMemberName(rotation.teamMemberId);
+  /*
+   * Findet zu einer bestehenden Verschiebung
+   * die zugehörige generierte Rotation.
+   *
+   * Dadurch können wir auch bei teamMemberId === null
+   * anzeigen, ob ursprünglich T2 oder ein Code-Busters-
+   * Mitglied zuständig war.
+   */
+  const getExceptionRotation = (exception: DeploymentException) => {
+    if (exception.type !== "rescheduled" || !exception.originalDate) {
+      return undefined;
+    }
+
+    return deploymentRotations.find(
+      (rotation) =>
+        rotation.deploymentKind === "rescheduled" &&
+        rotation.originalDate === exception.originalDate,
+    );
+  };
+
+  const getExceptionAssigneeName = (exception: DeploymentException) => {
+    if (exception.teamMemberId) {
+      return getTeamMemberName(exception.teamMemberId);
+    }
+
+    const rotation = getExceptionRotation(exception);
+
+    if (rotation) {
+      return getRotationAssigneeName(rotation.teamMemberId, teamMembers);
+    }
+
+    return "Reguläre Zuständigkeit";
   };
 
   const handleTypeChange = (nextType: DeploymentExceptionType) => {
@@ -102,12 +132,12 @@ export const DeploymentExceptionForm = ({
     setOriginalDate(value);
 
     /*
-     * Bei Auswahl eines anderen regulären Deployments
-     * wird eine eventuell manuell gewählte Person wieder
+     * Beim Wechsel des Ausgangstermins wird
+     * eine eventuell manuell gewählte Person
      * zurückgesetzt.
      *
-     * Standardmäßig bleibt damit die Person des regulären
-     * Deployments verantwortlich.
+     * Ohne Override bleibt damit die reguläre
+     * Zuständigkeit bestehen – also auch T2.
      */
     setTeamMemberId("");
 
@@ -241,7 +271,10 @@ export const DeploymentExceptionForm = ({
                   <option key={rotation.id} value={rotation.startDate}>
                     {formatDate(rotation.startDate)}
                     {" – "}
-                    {getRegularDeploymentTeamMemberName(rotation)}
+                    {getRotationAssigneeName(
+                      rotation.teamMemberId,
+                      teamMembers,
+                    )}
                   </option>
                 ))}
               </select>
@@ -290,7 +323,7 @@ export const DeploymentExceptionForm = ({
             >
               <option value="">
                 {type === "rescheduled"
-                  ? "Reguläre Person beibehalten"
+                  ? "Reguläre Zuständigkeit beibehalten"
                   : "Bitte auswählen"}
               </option>
 
@@ -300,6 +333,13 @@ export const DeploymentExceptionForm = ({
                 </option>
               ))}
             </select>
+
+            {type === "rescheduled" && originalDate ? (
+              <span>
+                Ohne Auswahl bleibt die ursprüngliche Zuständigkeit erhalten,
+                also auch T2 Team bei einem T2-Termin.
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -373,9 +413,7 @@ export const DeploymentExceptionForm = ({
                     : formatDate(exception.deploymentDate)}
                 </span>
 
-                <span>
-                  Zuständig: {getTeamMemberName(exception.teamMemberId)}
-                </span>
+                <span>Zuständig: {getExceptionAssigneeName(exception)}</span>
 
                 {exception.reason ? <span>{exception.reason}</span> : null}
               </div>
