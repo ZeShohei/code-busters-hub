@@ -1,0 +1,64 @@
+.sidebar {
+    min-width: 0;
+    min-height: 0;
+
+    height: 100dvh;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 2rem 1.5rem;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    border-right: 0.0625rem solid
+    var(--color-border-subtle);
+
+    background: var(--color-navigation-background);
+    color: var(--color-navigation-text);
+}
+
+.logo {
+    flex-shrink: 0;
+
+    margin-bottom: 2rem;
+
+    color: var(--color-navigation-text);
+
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.navigation {
+    flex: 1;
+}
+
+.footer {
+    flex-shrink: 0;
+
+    margin-top: auto;
+    padding-top: 2rem;
+}
+
+@media (max-width: 48rem) {
+    .sidebar {
+        height: auto;
+        max-height: 40dvh;
+
+        padding: 1rem;
+
+        border-right: 0;
+        border-bottom: 0.0625rem solid
+        var(--color-border-subtle);
+    }
+
+    .logo {
+        margin-bottom: 1rem;
+    }
+
+    .footer {
+        padding-top: 1rem;
+    }
+}
