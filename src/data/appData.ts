@@ -29,8 +29,13 @@ export const getAppData = async () => {
       }),
 
       prisma.substitution.findMany({
+        include: {
+          absence: true,
+        },
         orderBy: {
-          startDate: "asc",
+          absence: {
+            startDate: "asc",
+          },
         },
       }),
 
@@ -51,6 +56,7 @@ export const getAppData = async () => {
     lastName: member.lastName,
     displayName: member.displayName,
     email: member.email,
+    active: member.active,
   }));
 
   const absences: Absence[] = absenceRows.map((absence) => ({
@@ -64,10 +70,11 @@ export const getAppData = async () => {
   const substitutions: Substitution[] = substitutionRows.map(
     (substitution) => ({
       id: substitution.id,
-      teamMemberId: substitution.teamMemberId,
+      absenceId: substitution.absenceId,
+      teamMemberId: substitution.absence.teamMemberId,
       substituteTeamMemberId: substitution.substituteTeamMemberId,
-      startDate: toDateString(substitution.startDate),
-      endDate: toDateString(substitution.endDate),
+      startDate: toDateString(substitution.absence.startDate),
+      endDate: toDateString(substitution.absence.endDate),
     }),
   );
 
@@ -97,7 +104,9 @@ export const getAppData = async () => {
 
   const getParticipants = (config: RotationConfig) => {
     return config.participantTeamMemberIds
-      .map((id) => teamMembers.find((member) => member.id === id))
+      .map((id) =>
+        teamMembers.find((member) => member.id === id && member.active),
+      )
       .filter((member): member is TeamMember => member !== undefined);
   };
 

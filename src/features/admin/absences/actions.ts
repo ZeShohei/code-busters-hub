@@ -76,10 +76,8 @@ export const createAbsence = async (
       if (input.substituteTeamMemberId) {
         await transaction.substitution.create({
           data: {
-            teamMemberId: absence.teamMemberId,
+            absenceId: absence.id,
             substituteTeamMemberId: input.substituteTeamMemberId,
-            startDate: absence.startDate,
-            endDate: absence.endDate,
           },
         });
       }
@@ -119,21 +117,16 @@ export const updateAbsence = async (
         where: {
           id: absenceId,
         },
+        include: {
+          substitution: true,
+        },
       });
 
       if (!existingAbsence) {
         throw new Error("Absence not found.");
       }
 
-      const existingSubstitution = await transaction.substitution.findFirst({
-        where: {
-          teamMemberId: existingAbsence.teamMemberId,
-          startDate: existingAbsence.startDate,
-          endDate: existingAbsence.endDate,
-        },
-      });
-
-      const updatedAbsence = await transaction.absence.update({
+      await transaction.absence.update({
         where: {
           id: absenceId,
         },
@@ -146,32 +139,22 @@ export const updateAbsence = async (
       });
 
       if (input.substituteTeamMemberId) {
-        if (existingSubstitution) {
-          await transaction.substitution.update({
-            where: {
-              id: existingSubstitution.id,
-            },
-            data: {
-              teamMemberId: updatedAbsence.teamMemberId,
-              substituteTeamMemberId: input.substituteTeamMemberId,
-              startDate: updatedAbsence.startDate,
-              endDate: updatedAbsence.endDate,
-            },
-          });
-        } else {
-          await transaction.substitution.create({
-            data: {
-              teamMemberId: updatedAbsence.teamMemberId,
-              substituteTeamMemberId: input.substituteTeamMemberId,
-              startDate: updatedAbsence.startDate,
-              endDate: updatedAbsence.endDate,
-            },
-          });
-        }
-      } else if (existingSubstitution) {
+        await transaction.substitution.upsert({
+          where: {
+            absenceId,
+          },
+          update: {
+            substituteTeamMemberId: input.substituteTeamMemberId,
+          },
+          create: {
+            absenceId,
+            substituteTeamMemberId: input.substituteTeamMemberId,
+          },
+        });
+      } else if (existingAbsence.substitution) {
         await transaction.substitution.delete({
           where: {
-            id: existingSubstitution.id,
+            absenceId,
           },
         });
       }
@@ -196,30 +179,10 @@ export const deleteAbsence = async (
   absenceId: string,
 ): Promise<ActionResult> => {
   try {
-    await prisma.$transaction(async (transaction) => {
-      const absence = await transaction.absence.findUnique({
-        where: {
-          id: absenceId,
-        },
-      });
-
-      if (!absence) {
-        throw new Error("Absence not found.");
-      }
-
-      await transaction.substitution.deleteMany({
-        where: {
-          teamMemberId: absence.teamMemberId,
-          startDate: absence.startDate,
-          endDate: absence.endDate,
-        },
-      });
-
-      await transaction.absence.delete({
-        where: {
-          id: absenceId,
-        },
-      });
+    await prisma.absence.delete({
+      where: {
+        id: absenceId,
+      },
     });
 
     revalidateAbsencePages();

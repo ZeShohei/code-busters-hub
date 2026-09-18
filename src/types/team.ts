@@ -4,6 +4,7 @@ export interface TeamMember {
   lastName: string;
   displayName: string;
   email: string;
+  active: boolean;
 }
 
 export interface Absence {

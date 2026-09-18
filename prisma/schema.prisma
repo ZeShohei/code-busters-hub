@@ -19,11 +19,12 @@ enum RotationType {
 }
 
 model TeamMember {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   firstName   String
   lastName    String
   displayName String
-  email       String @unique
+  email       String  @unique
+  active      Boolean @default(true)
 
   absences Absence[]
 

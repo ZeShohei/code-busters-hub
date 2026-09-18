@@ -25,12 +25,14 @@ const main = async () => {
       firstName: "Shpetim",
       lastName: "Islami",
       displayName: "Shpetim Islami",
+      active: true,
     },
     create: {
       firstName: "Shpetim",
       lastName: "Islami",
       displayName: "Shpetim Islami",
       email: "shpetim.islami@example.com",
+      active: true,
     },
   });
 
@@ -42,12 +44,14 @@ const main = async () => {
       firstName: "Stefan",
       lastName: "Bozkurt",
       displayName: "Stefan Bozkurt",
+      active: true,
     },
     create: {
       firstName: "Stefan",
       lastName: "Bozkurt",
       displayName: "Stefan Bozkurt",
       email: "stefan.bozkurt@example.com",
+      active: true,
     },
   });
 
@@ -59,12 +63,14 @@ const main = async () => {
       firstName: "Denis",
       lastName: "Fejzic",
       displayName: "Denis Fejzic",
+      active: true,
     },
     create: {
       firstName: "Denis",
       lastName: "Fejzic",
       displayName: "Denis Fejzic",
       email: "denis.fejzic@example.com",
+      active: true,
     },
   });
 
@@ -223,7 +229,6 @@ const main = async () => {
         teamMemberId: denis.id,
         position: 2,
       },
-
       {
         rotationConfigId: deploymentConfig.id,
         teamMemberId: shpetim.id,
