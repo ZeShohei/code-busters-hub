@@ -17,7 +17,11 @@ import {
   type VacationHandoverDashboardItem,
 } from "@/features/dashboard/VacationHandovers";
 
-import { resolveRotation } from "@/features/rotations/utils";
+import {
+  getRotationAssigneeName,
+  resolveRotation,
+} from "@/features/rotations/utils";
+
 import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
 
@@ -37,7 +41,11 @@ import {
   isDateToday,
 } from "@/utils/date";
 
-import type { RotationAssignment, RotationResolution } from "@/types/team";
+import type {
+  RotationAssignment,
+  RotationResolution,
+  TeamMember,
+} from "@/types/team";
 
 import styles from "./page.module.css";
 
@@ -90,14 +98,14 @@ const getDeploymentCardLabel = (rotation?: RotationAssignment) => {
 const getDeploymentDescription = (
   rotation: RotationAssignment,
   resolution: RotationResolution,
-  teamMembers: Parameters<typeof getTeamMemberName>[1],
+  teamMembers: TeamMember[],
 ) => {
   const dateLabel = formatDate(rotation.startDate);
 
   const kindLabel = getDeploymentKindLabel(rotation);
 
   if (resolution.status === "substitution") {
-    return `${dateLabel} · ${kindLabel} · Vertretung für ${getTeamMemberName(
+    return `${dateLabel} · ${kindLabel} · Vertretung für ${getRotationAssigneeName(
       resolution.assignedTeamMemberId,
       teamMembers,
     )}`;
@@ -108,7 +116,9 @@ const getDeploymentDescription = (
   }
 
   if (rotation.deploymentKind === "rescheduled" && rotation.originalDate) {
-    return `${dateLabel} · Verschoben von ${formatDate(rotation.originalDate)}`;
+    return `${dateLabel} · Verschoben von ${formatDate(rotation.originalDate)}${
+      rotation.reason ? ` · ${rotation.reason}` : ""
+    }`;
   }
 
   if (rotation.deploymentKind === "special") {
@@ -171,8 +181,7 @@ export default async function Home() {
   ]);
 
   /*
-   * Dispatcher bleibt weiterhin
-   * eine Wochenrotation.
+   * Dispatcher bleibt eine Wochenrotation.
    */
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
 
@@ -181,11 +190,11 @@ export default async function Home() {
     : undefined;
 
   /*
-   * Deployment ist jetzt ein konkreter
-   * Termin.
+   * Deployments sind einzelne Termine.
    *
-   * Für die Teamkarte suchen wir deshalb
-   * das nächste Deployment ab heute.
+   * Das nächste Deployment kann entweder
+   * dem T2 Team oder den Code Busters
+   * zugeordnet sein.
    */
   const nextDeployment = getNextRotation(deploymentRotations);
 
@@ -194,14 +203,13 @@ export default async function Home() {
     : undefined;
 
   /*
-   * Für "Meine Rotation diese Woche"
-   * berücksichtigen wir Deployments,
-   * die heute oder später innerhalb
-   * dieser Woche stattfinden.
+   * Für die persönliche Rotation interessieren
+   * uns nur Deployments dieser Woche, deren
+   * effektive Zuständigkeit der eingeloggte User ist.
    *
-   * Dadurch kann es auch mehrere
-   * Deployments geben, z. B. regulär
-   * plus Sonderdeployment.
+   * Die technische T2-ID kann niemals einer User-ID
+   * entsprechen und wird deshalb automatisch
+   * ausgeschlossen.
    */
   const deploymentsThisWeek =
     getUpcomingRotationsInCurrentWeek(deploymentRotations);
@@ -261,7 +269,7 @@ export default async function Home() {
     if (deploymentSubstitutions.length > 0) {
       const firstSubstitution = deploymentSubstitutions[0];
 
-      return `Du vertrittst ${getTeamMemberName(
+      return `Du vertrittst ${getRotationAssigneeName(
         firstSubstitution.resolution.assignedTeamMemberId,
         teamMembers,
       )} beim Deployment am ${formatDate(
@@ -339,11 +347,11 @@ export default async function Home() {
 
   /*
    * Handlungsbedarf:
-   * unbesetzte aktuelle oder kommende
-   * Rotationen.
+   * unbesetzte aktuelle oder kommende Rotationen.
    *
-   * Dispatcher = Zeitraum
-   * Deployment = einzelner Termin
+   * Ein T2-Slot kann hier nicht auftauchen:
+   * resolveRotation() behandelt T2 immer als regulär,
+   * da T2 keine Abwesenheiten in unserem System besitzt.
    */
 
   const uncoveredRotationItems: ActionRequiredItem[] = [
@@ -366,12 +374,11 @@ export default async function Home() {
     .filter(({ resolution }) => resolution.status === "uncovered")
     .slice(0, 5)
     .map(({ rotation, resolution }) => {
-      const assignedName = getTeamMemberName(
-        resolution.assignedTeamMemberId,
-        teamMembers,
-      );
-
       const isDeployment = rotation.type === "deployment";
+
+      const assignedName = isDeployment
+        ? getRotationAssigneeName(resolution.assignedTeamMemberId, teamMembers)
+        : getTeamMemberName(resolution.assignedTeamMemberId, teamMembers);
 
       const rotationLabel = isDeployment
         ? getDeploymentKindLabel(rotation)
@@ -390,9 +397,9 @@ export default async function Home() {
 
         meta: isDeployment
           ? formatDate(rotation.startDate)
-          : `${formatDate(rotation.startDate)} – ${formatDate(
-              rotation.endDate,
-            )}`,
+          : `${formatDate(
+              rotation.startDate,
+            )} – ${formatDate(rotation.endDate)}`,
 
         href: "/absences?status=upcoming",
 
@@ -401,8 +408,7 @@ export default async function Home() {
     });
 
   /*
-   * Urlaubsübergaben für den
-   * aktuellen User.
+   * Urlaubsübergaben für den aktuellen User
    */
 
   const relevantVacationRows = vacationRows.filter((absence) => {
@@ -488,11 +494,6 @@ export default async function Home() {
       .map((absence) => {
         const handover = absence.vacationHandover;
 
-        /*
-         * Für den nächsten Schritt auf dem
-         * Dashboard verwenden wir nur
-         * unerledigte Aufgaben.
-         */
         const openTasks =
           handover?.tasks.filter((task) => !task.completed) ?? [];
 
@@ -660,7 +661,7 @@ export default async function Home() {
             label={getDeploymentCardLabel(nextDeployment)}
             value={
               nextDeploymentResolution
-                ? getTeamMemberName(
+                ? getRotationAssigneeName(
                     nextDeploymentResolution.effectiveTeamMemberId,
                     teamMembers,
                   )
