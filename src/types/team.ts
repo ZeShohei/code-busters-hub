@@ -16,6 +16,7 @@ export interface Absence {
 
 export interface Substitution {
   id: string;
+  absenceId: string;
   teamMemberId: string;
   substituteTeamMemberId: string;
   startDate: string;

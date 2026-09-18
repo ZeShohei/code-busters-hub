@@ -27,8 +27,7 @@ model TeamMember {
 
   absences Absence[]
 
-  substitutionsForMe Substitution[] @relation("SubstitutedTeamMember")
-  substitutionsByMe  Substitution[] @relation("SubstituteTeamMember")
+  substitutionsByMe Substitution[] @relation("SubstituteTeamMember")
 
   rotationParticipations RotationParticipant[]
 
@@ -36,14 +35,16 @@ model TeamMember {
 }
 
 model Absence {
-  id           String      @id @default(uuid())
+  id           String     @id @default(uuid())
   teamMemberId String
-  teamMember   TeamMember  @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
 
   startDate DateTime @db.Date
   endDate   DateTime @db.Date
 
   type AbsenceType
+
+  substitution Substitution?
 
   createdAt DateTime @default(now())
 }
@@ -51,14 +52,11 @@ model Absence {
 model Substitution {
   id String @id @default(uuid())
 
-  teamMemberId String
-  teamMember TeamMember @relation("SubstitutedTeamMember", fields: [teamMemberId], references: [id], onDelete: Cascade)
+  absenceId String @unique
+  absence   Absence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
 
   substituteTeamMemberId String
   substituteTeamMember TeamMember @relation("SubstituteTeamMember", fields: [substituteTeamMemberId], references: [id], onDelete: Cascade)
-
-  startDate DateTime @db.Date
-  endDate   DateTime @db.Date
 
   createdAt DateTime @default(now())
 }

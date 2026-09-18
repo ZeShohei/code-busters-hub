@@ -68,7 +68,7 @@ const main = async () => {
     },
   });
 
-  await prisma.absence.upsert({
+  const shpetimAbsence = await prisma.absence.upsert({
     where: {
       id: "absence-1",
     },
@@ -87,7 +87,7 @@ const main = async () => {
     },
   });
 
-  await prisma.absence.upsert({
+  const denisAbsence = await prisma.absence.upsert({
     where: {
       id: "absence-2",
     },
@@ -106,7 +106,7 @@ const main = async () => {
     },
   });
 
-  await prisma.absence.upsert({
+  const stefanAbsence = await prisma.absence.upsert({
     where: {
       id: "absence-3",
     },
@@ -127,58 +127,40 @@ const main = async () => {
 
   await prisma.substitution.upsert({
     where: {
-      id: "substitution-1",
+      absenceId: shpetimAbsence.id,
     },
     update: {
-      teamMemberId: shpetim.id,
       substituteTeamMemberId: stefan.id,
-      startDate: date("2026-09-07"),
-      endDate: date("2026-09-11"),
     },
     create: {
-      id: "substitution-1",
-      teamMemberId: shpetim.id,
+      absenceId: shpetimAbsence.id,
       substituteTeamMemberId: stefan.id,
-      startDate: date("2026-09-07"),
-      endDate: date("2026-09-11"),
     },
   });
 
   await prisma.substitution.upsert({
     where: {
-      id: "substitution-2",
+      absenceId: denisAbsence.id,
     },
     update: {
-      teamMemberId: denis.id,
       substituteTeamMemberId: shpetim.id,
-      startDate: date("2026-09-14"),
-      endDate: date("2026-09-18"),
     },
     create: {
-      id: "substitution-2",
-      teamMemberId: denis.id,
+      absenceId: denisAbsence.id,
       substituteTeamMemberId: shpetim.id,
-      startDate: date("2026-09-14"),
-      endDate: date("2026-09-18"),
     },
   });
 
   await prisma.substitution.upsert({
     where: {
-      id: "substitution-3",
+      absenceId: stefanAbsence.id,
     },
     update: {
-      teamMemberId: stefan.id,
       substituteTeamMemberId: denis.id,
-      startDate: date("2026-09-28"),
-      endDate: date("2026-10-02"),
     },
     create: {
-      id: "substitution-3",
-      teamMemberId: stefan.id,
+      absenceId: stefanAbsence.id,
       substituteTeamMemberId: denis.id,
-      startDate: date("2026-09-28"),
-      endDate: date("2026-10-02"),
     },
   });
 
