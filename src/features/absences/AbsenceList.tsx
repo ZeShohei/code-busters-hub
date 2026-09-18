@@ -1,16 +1,22 @@
 "use client";
 
+import Link from "next/link";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+
+import { useMemo, useState } from "react";
 
 import type { Absence, Substitution, TeamMember } from "@/types/team";
 
 import { getTeamMemberName } from "@/features/team/utils";
+
 import {
   formatDate,
   getDateRangeStatus,
   getDateRangeStatusLabel,
 } from "@/utils/date";
+
+import { cancelOwnAbsence } from "./actions";
 
 import styles from "./AbsenceList.module.css";
 
@@ -20,6 +26,7 @@ interface AbsenceListProps {
   absences: Absence[];
   substitutions: Substitution[];
   teamMembers: TeamMember[];
+  currentUserId: string;
 }
 
 const isAbsenceFilter = (value: string | null): value is AbsenceFilter => {
@@ -48,10 +55,15 @@ export const AbsenceList = ({
   absences,
   substitutions,
   teamMembers,
+  currentUserId,
 }: AbsenceListProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const [cancellingAbsenceId, setCancellingAbsenceId] = useState<string>();
+
+  const [actionError, setActionError] = useState<string>();
 
   const statusParam = searchParams.get("status");
 
@@ -90,6 +102,35 @@ export const AbsenceList = ({
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
+  };
+
+  const handleCancelAbsence = async (absenceId: string) => {
+    const confirmed = window.confirm(
+      "Möchtest du diese Abwesenheit wirklich stornieren?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActionError(undefined);
+    setCancellingAbsenceId(absenceId);
+
+    try {
+      const result = await cancelOwnAbsence(absenceId);
+
+      if (!result.success) {
+        setActionError(
+          result.error ?? "Die Abwesenheit konnte nicht storniert werden.",
+        );
+
+        return;
+      }
+
+      router.refresh();
+    } finally {
+      setCancellingAbsenceId(undefined);
+    }
   };
 
   const filteredAbsences = useMemo(() => {
@@ -174,6 +215,12 @@ export const AbsenceList = ({
         {filteredAbsences.length} von {absences.length} Abwesenheiten
       </span>
 
+      {actionError ? (
+        <div className={styles.actionError} role="alert">
+          {actionError}
+        </div>
+      ) : null}
+
       {filteredAbsences.length === 0 ? (
         <p className={styles.empty}>Keine passenden Abwesenheiten gefunden.</p>
       ) : (
@@ -190,6 +237,9 @@ export const AbsenceList = ({
                 item.startDate <= absence.endDate &&
                 item.endDate >= absence.startDate,
             );
+
+            const canManage =
+              absence.teamMemberId === currentUserId && status === "upcoming";
 
             return (
               <article key={absence.id} className={styles.card}>
@@ -237,6 +287,28 @@ export const AbsenceList = ({
                   >
                     {getDateRangeStatusLabel(status)}
                   </strong>
+
+                  {canManage ? (
+                    <div className={styles.itemActions}>
+                      <Link
+                        href={`/absences/${absence.id}/edit`}
+                        className={styles.editLink}
+                      >
+                        Bearbeiten
+                      </Link>
+
+                      <button
+                        type="button"
+                        className={styles.cancelButton}
+                        disabled={cancellingAbsenceId === absence.id}
+                        onClick={() => handleCancelAbsence(absence.id)}
+                      >
+                        {cancellingAbsenceId === absence.id
+                          ? "Storniert …"
+                          : "Stornieren"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </article>
             );

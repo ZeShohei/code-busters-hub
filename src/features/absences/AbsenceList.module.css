@@ -60,8 +60,7 @@
 }
 
 .search::placeholder {
-    color:
-            var(--color-text-placeholder);
+    color: var(--color-text-placeholder);
 
     opacity: 1;
 }
@@ -79,7 +78,7 @@
 
     box-shadow:
             0 0 0 0.1875rem
-            rgb(242 90 29 / 20%);
+            var(--color-brand-focus-ring);
 }
 
 .filters {
@@ -136,7 +135,8 @@
     background:
             var(--color-brand-primary);
 
-    color: var(--color-text-on-brand);
+    color:
+            var(--color-text-on-brand);
 }
 
 .activeFilter:hover {
@@ -146,7 +146,8 @@
     background:
             var(--color-brand-primary-hover);
 
-    color: var(--color-text-on-brand);
+    color:
+            var(--color-text-on-brand);
 }
 
 .filter:focus-visible,
@@ -165,6 +166,22 @@
     font-size: 0.8125rem;
 }
 
+.actionError {
+    padding: 0.75rem 1rem;
+
+    border: 0.0625rem solid
+    var(--color-border-error);
+    border-radius: var(--radius-md);
+
+    background:
+            var(--color-background-error);
+
+    color:
+            var(--color-text-error);
+
+    font-size: 0.875rem;
+}
+
 .list {
     display: flex;
     flex-direction: column;
@@ -173,6 +190,7 @@
 
 .card {
     display: grid;
+
     grid-template-columns:
     minmax(12rem, 1fr)
     minmax(14rem, auto)
@@ -204,14 +222,14 @@
 }
 
 .card:hover {
+    transform:
+            translateY(-0.0625rem);
+
     border-color:
             var(--color-border-default);
 
     box-shadow:
             var(--shadow-md);
-
-    transform:
-            translateY(-0.0625rem);
 }
 
 .person,
@@ -279,6 +297,84 @@
 
     color:
             var(--color-text-secondary);
+}
+
+.itemActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+
+    margin-top: 0.375rem;
+}
+
+.editLink,
+.cancelButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 2rem;
+
+    padding: 0.375rem 0.625rem;
+
+    border-radius: var(--radius-sm);
+
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    text-decoration: none;
+
+    transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
+}
+
+.editLink {
+    border: 0.0625rem solid
+    var(--color-border-default);
+
+    background:
+            var(--color-background-surface);
+
+    color:
+            var(--color-text-primary);
+}
+
+.editLink:hover {
+    border-color:
+            var(--color-brand-primary);
+
+    background:
+            var(--color-background-primary-subtle);
+
+    color:
+            var(--color-text-brand);
+}
+
+.cancelButton {
+    border: 0.0625rem solid
+    var(--color-border-error);
+
+    background:
+            var(--color-background-error);
+
+    color:
+            var(--color-text-error);
+}
+
+.cancelButton:hover:not(:disabled) {
+    border-color:
+            var(--color-text-error);
+}
+
+.cancelButton:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.5;
 }
 
 .empty {

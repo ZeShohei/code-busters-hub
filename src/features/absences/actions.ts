@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 import type { Absence } from "@/types/team";
 
-interface CreateOwnAbsenceInput {
+interface OwnAbsenceInput {
   type: Absence["type"];
   startDate: string;
   endDate: string;
@@ -29,10 +29,31 @@ interface SubstituteAvailability {
 interface GetAvailableSubstitutesInput {
   startDate: string;
   endDate: string;
+  absenceId?: string;
+}
+
+interface EditableOwnAbsence {
+  id: string;
+  type: Absence["type"];
+  startDate: string;
+  endDate: string;
+  substituteTeamMemberId: string;
 }
 
 const toDatabaseDate = (value: string) => {
   return new Date(`${value}T00:00:00.000Z`);
+};
+
+const toDateInputValue = (value: Date) => {
+  return value.toISOString().slice(0, 10);
+};
+
+const getToday = () => {
+  const now = new Date();
+
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
 };
 
 const getAuthenticatedUser = async () => {
@@ -55,7 +76,7 @@ const getAuthenticatedUser = async () => {
   return teamMember;
 };
 
-const validateInput = (input: CreateOwnAbsenceInput): string | undefined => {
+const validateInput = (input: OwnAbsenceInput): string | undefined => {
   if (!input.startDate || !input.endDate) {
     return "Bitte Start- und Enddatum auswählen.";
   }
@@ -73,15 +94,23 @@ const validateInput = (input: CreateOwnAbsenceInput): string | undefined => {
 
 const validateBusinessRules = async (
   teamMemberId: string,
-  input: CreateOwnAbsenceInput,
+  input: OwnAbsenceInput,
+  excludeAbsenceId?: string,
 ): Promise<string | undefined> => {
   const startDate = toDatabaseDate(input.startDate);
-
   const endDate = toDatabaseDate(input.endDate);
 
   const overlappingAbsence = await prisma.absence.findFirst({
     where: {
       teamMemberId,
+
+      ...(excludeAbsenceId
+        ? {
+            id: {
+              not: excludeAbsenceId,
+            },
+          }
+        : {}),
 
       startDate: {
         lte: endDate,
@@ -141,6 +170,14 @@ const validateBusinessRules = async (
     where: {
       substituteTeamMemberId: substitute.id,
 
+      ...(excludeAbsenceId
+        ? {
+            absenceId: {
+              not: excludeAbsenceId,
+            },
+          }
+        : {}),
+
       absence: {
         startDate: {
           lte: endDate,
@@ -168,7 +205,7 @@ const validateBusinessRules = async (
   return undefined;
 };
 
-const revalidateAbsencePages = () => {
+const revalidateAbsencePages = (absenceId?: string) => {
   revalidatePath("/");
   revalidatePath("/team");
   revalidatePath("/absences");
@@ -177,6 +214,10 @@ const revalidateAbsencePages = () => {
   revalidatePath("/admin");
   revalidatePath("/admin/absences");
   revalidatePath("/admin/rotations");
+
+  if (absenceId) {
+    revalidatePath(`/absences/${absenceId}/edit`);
+  }
 };
 
 export const getOwnAvailableSubstitutes = async (
@@ -192,8 +233,20 @@ export const getOwnAvailableSubstitutes = async (
     return [];
   }
 
-  const startDate = toDatabaseDate(input.startDate);
+  if (input.absenceId) {
+    const ownAbsence = await prisma.absence.findFirst({
+      where: {
+        id: input.absenceId,
+        teamMemberId: currentUser.id,
+      },
+    });
 
+    if (!ownAbsence) {
+      return [];
+    }
+  }
+
+  const startDate = toDatabaseDate(input.startDate);
   const endDate = toDatabaseDate(input.endDate);
 
   const candidates = await prisma.teamMember.findMany({
@@ -239,6 +292,14 @@ export const getOwnAvailableSubstitutes = async (
         where: {
           substituteTeamMemberId: candidate.id,
 
+          ...(input.absenceId
+            ? {
+                absenceId: {
+                  not: input.absenceId,
+                },
+              }
+            : {}),
+
           absence: {
             startDate: {
               lte: endDate,
@@ -269,8 +330,45 @@ export const getOwnAvailableSubstitutes = async (
   );
 };
 
+export const getOwnAbsenceForEdit = async (
+  absenceId: string,
+): Promise<EditableOwnAbsence | null> => {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  const absence = await prisma.absence.findFirst({
+    where: {
+      id: absenceId,
+      teamMemberId: currentUser.id,
+    },
+
+    include: {
+      substitution: true,
+    },
+  });
+
+  if (!absence) {
+    return null;
+  }
+
+  if (absence.startDate <= getToday()) {
+    return null;
+  }
+
+  return {
+    id: absence.id,
+    type: absence.type,
+    startDate: toDateInputValue(absence.startDate),
+    endDate: toDateInputValue(absence.endDate),
+    substituteTeamMemberId: absence.substitution?.substituteTeamMemberId ?? "",
+  };
+};
+
 export const createOwnAbsence = async (
-  input: CreateOwnAbsenceInput,
+  input: OwnAbsenceInput,
 ): Promise<ActionResult> => {
   const currentUser = await getAuthenticatedUser();
 
@@ -304,11 +402,8 @@ export const createOwnAbsence = async (
       const absence = await transaction.absence.create({
         data: {
           teamMemberId: currentUser.id,
-
           type: input.type,
-
           startDate: toDatabaseDate(input.startDate),
-
           endDate: toDatabaseDate(input.endDate),
         },
       });
@@ -317,7 +412,6 @@ export const createOwnAbsence = async (
         await transaction.substitution.create({
           data: {
             absenceId: absence.id,
-
             substituteTeamMemberId: input.substituteTeamMemberId,
           },
         });
@@ -335,6 +429,164 @@ export const createOwnAbsence = async (
     return {
       success: false,
       error: "Die Abwesenheit konnte nicht gespeichert werden.",
+    };
+  }
+};
+
+export const updateOwnAbsence = async (
+  absenceId: string,
+  input: OwnAbsenceInput,
+): Promise<ActionResult> => {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return {
+      success: false,
+      error: "Du bist nicht angemeldet.",
+    };
+  }
+
+  const absence = await prisma.absence.findFirst({
+    where: {
+      id: absenceId,
+      teamMemberId: currentUser.id,
+    },
+  });
+
+  if (!absence) {
+    return {
+      success: false,
+      error: "Die Abwesenheit wurde nicht gefunden.",
+    };
+  }
+
+  if (absence.startDate <= getToday()) {
+    return {
+      success: false,
+      error:
+        "Aktuelle oder vergangene Abwesenheiten können nicht mehr bearbeitet werden.",
+    };
+  }
+
+  const validationError = validateInput(input);
+
+  if (validationError) {
+    return {
+      success: false,
+      error: validationError,
+    };
+  }
+
+  const businessRuleError = await validateBusinessRules(
+    currentUser.id,
+    input,
+    absenceId,
+  );
+
+  if (businessRuleError) {
+    return {
+      success: false,
+      error: businessRuleError,
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      await transaction.absence.update({
+        where: {
+          id: absenceId,
+        },
+
+        data: {
+          type: input.type,
+          startDate: toDatabaseDate(input.startDate),
+          endDate: toDatabaseDate(input.endDate),
+        },
+      });
+
+      await transaction.substitution.deleteMany({
+        where: {
+          absenceId,
+        },
+      });
+
+      if (input.substituteTeamMemberId) {
+        await transaction.substitution.create({
+          data: {
+            absenceId,
+            substituteTeamMemberId: input.substituteTeamMemberId,
+          },
+        });
+      }
+    });
+
+    revalidateAbsencePages(absenceId);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Failed to update own absence:", error);
+
+    return {
+      success: false,
+      error: "Die Abwesenheit konnte nicht aktualisiert werden.",
+    };
+  }
+};
+
+export const cancelOwnAbsence = async (
+  absenceId: string,
+): Promise<ActionResult> => {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return {
+      success: false,
+      error: "Du bist nicht angemeldet.",
+    };
+  }
+
+  const absence = await prisma.absence.findFirst({
+    where: {
+      id: absenceId,
+      teamMemberId: currentUser.id,
+    },
+  });
+
+  if (!absence) {
+    return {
+      success: false,
+      error: "Die Abwesenheit wurde nicht gefunden.",
+    };
+  }
+
+  if (absence.startDate <= getToday()) {
+    return {
+      success: false,
+      error:
+        "Aktuelle oder vergangene Abwesenheiten können nicht mehr storniert werden.",
+    };
+  }
+
+  try {
+    await prisma.absence.delete({
+      where: {
+        id: absenceId,
+      },
+    });
+
+    revalidateAbsencePages(absenceId);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Failed to cancel own absence:", error);
+
+    return {
+      success: false,
+      error: "Die Abwesenheit konnte nicht storniert werden.",
     };
   }
 };

@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 
 import type { Absence } from "@/types/team";
 
-import { createOwnAbsence, getOwnAvailableSubstitutes } from "./actions";
+import {
+  cancelOwnAbsence,
+  createOwnAbsence,
+  getOwnAvailableSubstitutes,
+  updateOwnAbsence,
+} from "./actions";
 
 import styles from "./OwnAbsenceForm.module.css";
 
@@ -24,14 +29,28 @@ interface FormValues {
   substituteTeamMemberId: string;
 }
 
-export const OwnAbsenceForm = () => {
+interface EditableAbsence {
+  id: string;
+  type: Absence["type"];
+  startDate: string;
+  endDate: string;
+  substituteTeamMemberId: string;
+}
+
+interface OwnAbsenceFormProps {
+  absence?: EditableAbsence;
+}
+
+export const OwnAbsenceForm = ({ absence }: OwnAbsenceFormProps) => {
   const router = useRouter();
 
+  const isEditMode = Boolean(absence);
+
   const [values, setValues] = useState<FormValues>({
-    type: "vacation",
-    startDate: "",
-    endDate: "",
-    substituteTeamMemberId: "",
+    type: absence?.type ?? "vacation",
+    startDate: absence?.startDate ?? "",
+    endDate: absence?.endDate ?? "",
+    substituteTeamMemberId: absence?.substituteTeamMemberId ?? "",
   });
 
   const [availableSubstitutes, setAvailableSubstitutes] = useState<
@@ -41,6 +60,7 @@ export const OwnAbsenceForm = () => {
   const [isLoadingSubstitutes, setIsLoadingSubstitutes] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [error, setError] = useState<string>();
 
@@ -62,6 +82,7 @@ export const OwnAbsenceForm = () => {
         const result = await getOwnAvailableSubstitutes({
           startDate: values.startDate,
           endDate: values.endDate,
+          absenceId: absence?.id,
         });
 
         if (!cancelled) {
@@ -79,7 +100,27 @@ export const OwnAbsenceForm = () => {
     return () => {
       cancelled = true;
     };
-  }, [values.startDate, values.endDate]);
+  }, [absence?.id, values.startDate, values.endDate]);
+
+  const handleStartDateChange = (value: string) => {
+    setValues((current) => ({
+      ...current,
+      startDate: value,
+      substituteTeamMemberId: "",
+    }));
+
+    setAvailableSubstitutes([]);
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setValues((current) => ({
+      ...current,
+      endDate: value,
+      substituteTeamMemberId: "",
+    }));
+
+    setAvailableSubstitutes([]);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -88,12 +129,16 @@ export const OwnAbsenceForm = () => {
     setIsSaving(true);
 
     try {
-      const result = await createOwnAbsence({
+      const input = {
         type: values.type,
         startDate: values.startDate,
         endDate: values.endDate,
         substituteTeamMemberId: values.substituteTeamMemberId || undefined,
-      });
+      };
+
+      const result = absence
+        ? await updateOwnAbsence(absence.id, input)
+        : await createOwnAbsence(input);
 
       if (!result.success) {
         setError(
@@ -110,6 +155,42 @@ export const OwnAbsenceForm = () => {
     }
   };
 
+  const handleCancelAbsence = async () => {
+    if (!absence) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Möchtest du diese Abwesenheit wirklich stornieren?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(undefined);
+    setIsDeleting(true);
+
+    try {
+      const result = await cancelOwnAbsence(absence.id);
+
+      if (!result.success) {
+        setError(
+          result.error ?? "Die Abwesenheit konnte nicht storniert werden.",
+        );
+
+        return;
+      }
+
+      router.push("/absences");
+      router.refresh();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isBusy = isSaving || isDeleting;
+
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.field}>
@@ -119,6 +200,7 @@ export const OwnAbsenceForm = () => {
           id="type"
           name="type"
           value={values.type}
+          disabled={isBusy}
           onChange={(event) =>
             setValues((current) => ({
               ...current,
@@ -143,16 +225,9 @@ export const OwnAbsenceForm = () => {
             name="startDate"
             type="date"
             required
+            disabled={isBusy}
             value={values.startDate}
-            onChange={(event) => {
-              setValues((current) => ({
-                ...current,
-                startDate: event.target.value,
-                substituteTeamMemberId: "",
-              }));
-
-              setAvailableSubstitutes([]);
-            }}
+            onChange={(event) => handleStartDateChange(event.target.value)}
           />
         </div>
 
@@ -164,17 +239,10 @@ export const OwnAbsenceForm = () => {
             name="endDate"
             type="date"
             required
+            disabled={isBusy}
             min={values.startDate || undefined}
             value={values.endDate}
-            onChange={(event) => {
-              setValues((current) => ({
-                ...current,
-                endDate: event.target.value,
-                substituteTeamMemberId: "",
-              }));
-
-              setAvailableSubstitutes([]);
-            }}
+            onChange={(event) => handleEndDateChange(event.target.value)}
           />
         </div>
       </div>
@@ -187,7 +255,11 @@ export const OwnAbsenceForm = () => {
           name="substitute"
           value={values.substituteTeamMemberId}
           disabled={
-            !values.startDate || !values.endDate || isLoadingSubstitutes
+            isBusy ||
+            !values.startDate ||
+            !values.endDate ||
+            values.endDate < values.startDate ||
+            isLoadingSubstitutes
           }
           onChange={(event) =>
             setValues((current) => ({
@@ -205,6 +277,7 @@ export const OwnAbsenceForm = () => {
               disabled={!substitute.available}
             >
               {substitute.displayName}
+
               {!substitute.available && substitute.reason
                 ? ` – ${substitute.reason}`
                 : ""}
@@ -226,10 +299,21 @@ export const OwnAbsenceForm = () => {
       ) : null}
 
       <div className={styles.actions}>
+        {absence ? (
+          <button
+            type="button"
+            className={styles.deleteButton}
+            disabled={isBusy}
+            onClick={handleCancelAbsence}
+          >
+            {isDeleting ? "Storniert …" : "Abwesenheit stornieren"}
+          </button>
+        ) : null}
+
         <button
           type="button"
           className={styles.secondaryButton}
-          disabled={isSaving}
+          disabled={isBusy}
           onClick={() => router.push("/absences")}
         >
           Abbrechen
@@ -238,9 +322,13 @@ export const OwnAbsenceForm = () => {
         <button
           type="submit"
           className={styles.primaryButton}
-          disabled={isSaving}
+          disabled={isBusy}
         >
-          {isSaving ? "Speichert …" : "Abwesenheit eintragen"}
+          {isSaving
+            ? "Speichert …"
+            : isEditMode
+              ? "Änderungen speichern"
+              : "Abwesenheit eintragen"}
         </button>
       </div>
     </form>
