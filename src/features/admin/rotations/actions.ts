@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/features/admin/requireAdmin";
 import type { RotationAssignment } from "@/types/team";
 
 interface SaveRotationConfigInput {
@@ -33,6 +34,7 @@ const revalidateRotationPages = () => {
 export const updateRotationConfig = async (
   input: SaveRotationConfigInput,
 ): Promise<ActionResult> => {
+  await requireAdmin();
   if (!input.startDate) {
     return {
       success: false,

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireAdmin } from "@/features/admin/requireAdmin";
 import { prisma } from "@/lib/prisma";
 import type { Absence } from "@/types/team";
 
@@ -177,6 +178,8 @@ interface GetAvailableSubstitutesInput {
 export const getAvailableSubstitutes = async (
   input: GetAvailableSubstitutesInput,
 ): Promise<SubstituteAvailability[]> => {
+  await requireAdmin();
+
   if (
     !input.teamMemberId ||
     !input.startDate ||
@@ -284,6 +287,8 @@ const revalidateAbsencePages = () => {
 export const createAbsence = async (
   input: SaveAbsenceInput,
 ): Promise<ActionResult> => {
+  await requireAdmin();
+
   const validationError = validateInput(input);
 
   if (validationError) {
@@ -346,6 +351,8 @@ export const updateAbsence = async (
   absenceId: string,
   input: SaveAbsenceInput,
 ): Promise<ActionResult> => {
+  await requireAdmin();
+
   const validationError = validateInput(input);
 
   if (validationError) {
@@ -439,6 +446,8 @@ export const updateAbsence = async (
 export const deleteAbsence = async (
   absenceId: string,
 ): Promise<ActionResult> => {
+  await requireAdmin();
+
   try {
     await prisma.absence.delete({
       where: {

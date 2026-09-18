@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireAdmin } from "@/features/admin/requireAdmin";
 import { prisma } from "@/lib/prisma";
 
 interface SaveTeamMemberInput {
@@ -50,6 +51,8 @@ const revalidateTeamPages = () => {
 export const createTeamMember = async (
   input: SaveTeamMemberInput,
 ): Promise<ActionResult> => {
+  await requireAdmin();
+
   const validationError = validateInput(input);
 
   if (validationError) {
@@ -92,6 +95,8 @@ export const updateTeamMember = async (
   id: string,
   input: SaveTeamMemberInput,
 ): Promise<ActionResult> => {
+  await requireAdmin();
+
   const validationError = validateInput(input);
 
   if (validationError) {
@@ -135,6 +140,8 @@ export const setTeamMemberActive = async (
   id: string,
   active: boolean,
 ): Promise<ActionResult> => {
+  await requireAdmin();
+
   try {
     await prisma.teamMember.update({
       where: {
