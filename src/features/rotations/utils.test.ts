@@ -1,8 +1,12 @@
-import { describe, expect, it } from "@jest/globals";
-
 import type { TeamMember } from "@/types/team";
 
-import { T2_TEAM_ROTATION_ID, generateRotations } from "./utils";
+import {
+  T2_TEAM_ROTATION_ID,
+  generateRotations,
+  getRotationAssigneeName,
+  isT2TeamRotation,
+  resolveRotation,
+} from "./utils";
 
 const teamMembers: TeamMember[] = [
   {
@@ -37,9 +41,9 @@ const teamMembers: TeamMember[] = [
   },
 ];
 
-describe("generateRotations", () => {
-  describe("deployment", () => {
-    it("alterniert zwischen T2 und Code Busters ohne die interne Personenrotation bei T2 weiterzuschalten", () => {
+describe("Rotationslogik", () => {
+  describe("Deployment", () => {
+    it("alterniert zwischen T2 und Code Busters", () => {
       const rotations = generateRotations({
         teamMembers,
         startDate: "2026-09-21",
@@ -90,7 +94,25 @@ describe("generateRotations", () => {
       ]);
     });
 
-    it("kann mit einem Code-Busters-Slot beginnen", () => {
+    it("schaltet die Code-Busters-Person bei einem T2-Slot nicht weiter", () => {
+      const rotations = generateRotations({
+        teamMembers,
+        startDate: "2026-09-21",
+        numberOfWeeks: 8,
+        type: "deployment",
+        startIndex: 1,
+        deploymentStartsWithT2: true,
+      });
+
+      expect(rotations.map((rotation) => rotation.teamMemberId)).toEqual([
+        T2_TEAM_ROTATION_ID,
+        "shpetim",
+        T2_TEAM_ROTATION_ID,
+        "denis",
+      ]);
+    });
+
+    it("kann bewusst mit Code Busters statt T2 beginnen", () => {
       const rotations = generateRotations({
         teamMembers,
         startDate: "2026-09-21",
@@ -109,7 +131,7 @@ describe("generateRotations", () => {
       ]);
     });
 
-    it("erzeugt Deployments ausschließlich als einzelne Termine im 14-Tage-Abstand", () => {
+    it("erzeugt reguläre Deployments alle 14 Tage am Donnerstag", () => {
       const rotations = generateRotations({
         teamMembers,
         startDate: "2026-09-21",
@@ -143,9 +165,106 @@ describe("generateRotations", () => {
         },
       ]);
     });
+
+    it("setzt das erste Deployment auf den nächsten Donnerstag", () => {
+      const rotations = generateRotations({
+        teamMembers,
+        startDate: "2026-09-25",
+        numberOfWeeks: 4,
+        type: "deployment",
+        startIndex: 0,
+        deploymentStartsWithT2: true,
+      });
+
+      expect(rotations[0]?.startDate).toBe("2026-10-01");
+    });
+
+    it("erkennt einen T2-Slot eindeutig", () => {
+      const rotations = generateRotations({
+        teamMembers,
+        startDate: "2026-09-21",
+        numberOfWeeks: 4,
+        type: "deployment",
+        startIndex: 0,
+        deploymentStartsWithT2: true,
+      });
+
+      expect(isT2TeamRotation(rotations[0])).toBe(true);
+
+      expect(isT2TeamRotation(rotations[1])).toBe(false);
+    });
+
+    it("zeigt T2 mit dem korrekten Namen an", () => {
+      expect(getRotationAssigneeName(T2_TEAM_ROTATION_ID, teamMembers)).toBe(
+        "T2 Team",
+      );
+    });
+
+    it("behandelt T2 auch ohne Abwesenheitsdaten als regulär besetzt", () => {
+      const rotations = generateRotations({
+        teamMembers,
+        startDate: "2026-09-21",
+        numberOfWeeks: 4,
+        type: "deployment",
+        startIndex: 0,
+        deploymentStartsWithT2: true,
+      });
+
+      const t2Rotation = rotations[0];
+
+      const resolution = resolveRotation(t2Rotation, [], []);
+
+      expect(resolution).toEqual({
+        status: "regular",
+        assignedTeamMemberId: T2_TEAM_ROTATION_ID,
+        effectiveTeamMemberId: T2_TEAM_ROTATION_ID,
+      });
+    });
+
+    it("verwendet bei Abwesenheit eines Code-Busters-Mitglieds dessen Vertretung", () => {
+      const rotations = generateRotations({
+        teamMembers,
+        startDate: "2026-09-21",
+        numberOfWeeks: 4,
+        type: "deployment",
+        startIndex: 0,
+        deploymentStartsWithT2: true,
+      });
+
+      const stefanDeployment = rotations[1];
+
+      const resolution = resolveRotation(
+        stefanDeployment,
+        [
+          {
+            id: "absence-stefan",
+            teamMemberId: "stefan",
+            startDate: "2026-10-08",
+            endDate: "2026-10-08",
+            type: "vacation",
+          },
+        ],
+        [
+          {
+            id: "substitution-stefan",
+            absenceId: "absence-stefan",
+            teamMemberId: "stefan",
+            substituteTeamMemberId: "shpetim",
+            startDate: "2026-10-08",
+            endDate: "2026-10-08",
+          },
+        ],
+      );
+
+      expect(resolution).toEqual({
+        status: "substitution",
+        assignedTeamMemberId: "stefan",
+        effectiveTeamMemberId: "shpetim",
+      });
+    });
   });
 
-  describe("dispatcher", () => {
+  describe("Dispatcher", () => {
     it("behält die wöchentliche Dispatcher-Rotation bei", () => {
       const rotations = generateRotations({
         teamMembers,
