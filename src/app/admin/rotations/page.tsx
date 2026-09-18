@@ -2,17 +2,19 @@ import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { getAppData } from "@/data/appData";
 import { AdminRotationForm } from "@/features/admin/rotations/AdminRotationForm";
-import { RotationConfigHistory } from "@/features/admin/rotations/RotationConfigHistory";
+import { RotationHistory } from "@/features/admin/rotations/RotationHistory";
 
 import styles from "./page.module.css";
 
 export default async function AdminRotationsPage() {
   const {
     teamMembers,
+    absences,
+    substitutions,
     dispatcherConfig,
     deploymentConfig,
-    dispatcherConfigs,
-    deploymentConfigs,
+    dispatcherRotations,
+    deploymentRotations,
   } = await getAppData();
 
   return (
@@ -32,7 +34,7 @@ export default async function AdminRotationsPage() {
       <PageHeader
         eyebrow="Administration"
         title="Rotationen verwalten"
-        description="Konfiguriere Dispatcher- und Deployment-Rotationen. Änderungen werden als neue zeitliche Version gespeichert."
+        description="Konfiguriere Dispatcher- und Deployment-Rotationen und prüfe den vollständigen Rotationsverlauf."
       />
 
       <section className={styles.rotationSection}>
@@ -42,9 +44,12 @@ export default async function AdminRotationsPage() {
           teamMembers={teamMembers}
         />
 
-        <RotationConfigHistory
-          configs={dispatcherConfigs}
+        <RotationHistory
+          title="Dispatcher History"
+          rotations={dispatcherRotations}
           teamMembers={teamMembers}
+          absences={absences}
+          substitutions={substitutions}
         />
       </section>
 
@@ -55,9 +60,12 @@ export default async function AdminRotationsPage() {
           teamMembers={teamMembers}
         />
 
-        <RotationConfigHistory
-          configs={deploymentConfigs}
+        <RotationHistory
+          title="Deployment History"
+          rotations={deploymentRotations}
           teamMembers={teamMembers}
+          absences={absences}
+          substitutions={substitutions}
         />
       </section>
     </div>
