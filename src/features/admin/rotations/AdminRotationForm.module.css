@@ -150,6 +150,22 @@
     color: #027a48;
 }
 
+.info {
+    padding: 1rem;
+    border: 1px solid #d9d9d9;
+    border-radius: 0.5rem;
+    background: #f6f6f6;
+}
+
+.info strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.info p {
+    margin: 0;
+}
+
 @media (max-width: 40rem) {
     .fields {
         grid-template-columns: 1fr;

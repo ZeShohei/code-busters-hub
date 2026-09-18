@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import type { RotationConfig, TeamMember } from "@/types/team";
@@ -19,6 +20,8 @@ export const AdminRotationForm = ({
   config,
   teamMembers,
 }: AdminRotationFormProps) => {
+  const router = useRouter();
+
   const activeTeamMembers = teamMembers.filter((member) => member.active);
 
   const initialParticipantIds = config.participantTeamMemberIds.filter((id) =>
@@ -41,9 +44,7 @@ export const AdminRotationForm = ({
   );
 
   const [error, setError] = useState<string>();
-
   const [success, setSuccess] = useState<string>();
-
   const [isSaving, setIsSaving] = useState(false);
 
   const getTeamMember = (id: string) => {
@@ -91,6 +92,7 @@ export const AdminRotationForm = ({
     });
 
     setSuccess(undefined);
+    setError(undefined);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -116,7 +118,11 @@ export const AdminRotationForm = ({
       return;
     }
 
-    setSuccess("Rotationskonfiguration wurde gespeichert.");
+    setSuccess(
+      "Rotationskonfiguration wurde gespeichert. Frühere Rotationen bleiben unverändert.",
+    );
+
+    router.refresh();
   };
 
   return (
@@ -125,13 +131,25 @@ export const AdminRotationForm = ({
         <div>
           <h2>{title}</h2>
 
-          <p>Teilnehmer und Reihenfolge dieser Rotation verwalten.</p>
+          <p>
+            Teilnehmer und Reihenfolge dieser Rotation verwalten. Änderungen
+            gelten ab dem gewählten Datum.
+          </p>
         </div>
+      </div>
+
+      <div className={styles.info}>
+        <strong>Versionierte Rotation</strong>
+
+        <p>
+          Beim Speichern wird die bestehende Historie nicht überschrieben. Die
+          neue Konfiguration gilt erst ab dem angegebenen Datum.
+        </p>
       </div>
 
       <div className={styles.fields}>
         <div className={styles.field}>
-          <label htmlFor={`${config.type}-start-date`}>Startdatum</label>
+          <label htmlFor={`${config.type}-start-date`}>Gültig ab</label>
 
           <input
             id={`${config.type}-start-date`}
@@ -140,8 +158,8 @@ export const AdminRotationForm = ({
             value={startDate}
             onChange={(event) => {
               setStartDate(event.target.value);
-
               setSuccess(undefined);
+              setError(undefined);
             }}
           />
         </div>
@@ -157,8 +175,8 @@ export const AdminRotationForm = ({
             value={numberOfWeeks}
             onChange={(event) => {
               setNumberOfWeeks(Number(event.target.value));
-
               setSuccess(undefined);
+              setError(undefined);
             }}
           />
         </div>
@@ -239,8 +257,8 @@ export const AdminRotationForm = ({
           value={startTeamMemberId}
           onChange={(event) => {
             setStartTeamMemberId(event.target.value);
-
             setSuccess(undefined);
+            setError(undefined);
           }}
         >
           <option value="">Bitte auswählen</option>

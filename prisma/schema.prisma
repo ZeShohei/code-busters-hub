@@ -65,7 +65,7 @@ model Substitution {
 model RotationConfig {
   id String @id @default(uuid())
 
-  type RotationType @unique
+  type RotationType
 
   startDate     DateTime @db.Date
   numberOfWeeks Int
@@ -75,6 +75,8 @@ model RotationConfig {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([type, startDate])
 }
 
 model RotationParticipant {

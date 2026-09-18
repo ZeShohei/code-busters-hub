@@ -78,53 +78,70 @@ export const getAppData = async () => {
     }),
   );
 
-  const getRotationConfig = (
+  const mapRotationConfigs = (
     type: "dispatcher" | "deployment",
-  ): RotationConfig => {
-    const config = rotationConfigRows.find((item) => item.type === type);
+  ): RotationConfig[] => {
+    return rotationConfigRows
+      .filter((config) => config.type === type)
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+      .map((config) => ({
+        participantTeamMemberIds: config.participants.map(
+          (participant) => participant.teamMemberId,
+        ),
+        startDate: toDateString(config.startDate),
+        numberOfWeeks: config.numberOfWeeks,
+        startIndex: config.startIndex,
+        type,
+      }));
+  };
+
+  const dispatcherConfigs = mapRotationConfigs("dispatcher");
+
+  const deploymentConfigs = mapRotationConfigs("deployment");
+
+  const generateVersionedRotations = (configs: RotationConfig[]) => {
+    return configs.flatMap((config, index) => {
+      const nextConfig = configs[index + 1];
+
+      const participants = config.participantTeamMemberIds
+        .map((id) => teamMembers.find((member) => member.id === id))
+        .filter((member): member is TeamMember => member !== undefined);
+
+      const rotations = generateRotations({
+        teamMembers: participants,
+        startDate: config.startDate,
+        numberOfWeeks: config.numberOfWeeks,
+        type: config.type,
+        startIndex: config.startIndex,
+      });
+
+      if (!nextConfig) {
+        return rotations;
+      }
+
+      return rotations.filter(
+        (rotation) => rotation.startDate < nextConfig.startDate,
+      );
+    });
+  };
+
+  const getLatestConfig = (configs: RotationConfig[]) => {
+    const config = configs[configs.length - 1];
 
     if (!config) {
-      throw new Error(`Rotation config "${type}" not found.`);
+      throw new Error("Rotation config not found.");
     }
 
-    return {
-      participantTeamMemberIds: config.participants.map(
-        (participant) => participant.teamMemberId,
-      ),
-      startDate: toDateString(config.startDate),
-      numberOfWeeks: config.numberOfWeeks,
-      startIndex: config.startIndex,
-      type,
-    };
+    return config;
   };
 
-  const dispatcherConfig = getRotationConfig("dispatcher");
+  const dispatcherConfig = getLatestConfig(dispatcherConfigs);
 
-  const deploymentConfig = getRotationConfig("deployment");
+  const deploymentConfig = getLatestConfig(deploymentConfigs);
 
-  const getParticipants = (config: RotationConfig) => {
-    return config.participantTeamMemberIds
-      .map((id) =>
-        teamMembers.find((member) => member.id === id && member.active),
-      )
-      .filter((member): member is TeamMember => member !== undefined);
-  };
+  const dispatcherRotations = generateVersionedRotations(dispatcherConfigs);
 
-  const dispatcherRotations = generateRotations({
-    teamMembers: getParticipants(dispatcherConfig),
-    startDate: dispatcherConfig.startDate,
-    numberOfWeeks: dispatcherConfig.numberOfWeeks,
-    type: dispatcherConfig.type,
-    startIndex: dispatcherConfig.startIndex,
-  });
-
-  const deploymentRotations = generateRotations({
-    teamMembers: getParticipants(deploymentConfig),
-    startDate: deploymentConfig.startDate,
-    numberOfWeeks: deploymentConfig.numberOfWeeks,
-    type: deploymentConfig.type,
-    startIndex: deploymentConfig.startIndex,
-  });
+  const deploymentRotations = generateVersionedRotations(deploymentConfigs);
 
   return {
     teamMembers,
@@ -133,6 +150,9 @@ export const getAppData = async () => {
 
     dispatcherConfig,
     deploymentConfig,
+
+    dispatcherConfigs,
+    deploymentConfigs,
 
     dispatcherRotations,
     deploymentRotations,

@@ -170,35 +170,43 @@ const main = async () => {
     },
   });
 
+  const dispatcherStartDate = date("2026-08-31");
+
   const dispatcherConfig = await prisma.rotationConfig.upsert({
     where: {
-      type: RotationType.dispatcher,
+      type_startDate: {
+        type: RotationType.dispatcher,
+        startDate: dispatcherStartDate,
+      },
     },
     update: {
-      startDate: date("2026-08-31"),
       numberOfWeeks: 52,
       startIndex: 0,
     },
     create: {
       type: RotationType.dispatcher,
-      startDate: date("2026-08-31"),
+      startDate: dispatcherStartDate,
       numberOfWeeks: 52,
       startIndex: 0,
     },
   });
 
+  const deploymentStartDate = date("2026-08-31");
+
   const deploymentConfig = await prisma.rotationConfig.upsert({
     where: {
-      type: RotationType.deployment,
+      type_startDate: {
+        type: RotationType.deployment,
+        startDate: deploymentStartDate,
+      },
     },
     update: {
-      startDate: date("2026-08-31"),
       numberOfWeeks: 52,
       startIndex: 1,
     },
     create: {
       type: RotationType.deployment,
-      startDate: date("2026-08-31"),
+      startDate: deploymentStartDate,
       numberOfWeeks: 52,
       startIndex: 1,
     },

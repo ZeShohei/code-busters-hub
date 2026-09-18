@@ -86,19 +86,23 @@ export const updateRotationConfig = async (
       input.startTeamMemberId,
     );
 
+    const startDate = toDatabaseDate(input.startDate);
+
     await prisma.$transaction(async (transaction) => {
       const config = await transaction.rotationConfig.upsert({
         where: {
-          type: input.type,
+          type_startDate: {
+            type: input.type,
+            startDate,
+          },
         },
         update: {
-          startDate: toDatabaseDate(input.startDate),
           numberOfWeeks: input.numberOfWeeks,
           startIndex,
         },
         create: {
           type: input.type,
-          startDate: toDatabaseDate(input.startDate),
+          startDate,
           numberOfWeeks: input.numberOfWeeks,
           startIndex,
         },
