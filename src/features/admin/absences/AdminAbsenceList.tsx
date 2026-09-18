@@ -22,6 +22,19 @@ export const AdminAbsenceList = ({
     return teamMembers.find((member) => member.id === teamMemberId);
   };
 
+  const getAbsenceTypeLabel = (type: Absence["type"]) => {
+    switch (type) {
+      case "vacation":
+        return "Urlaub";
+
+      case "sickLeave":
+        return "Krankenstand";
+
+      case "other":
+        return "Sonstige Abwesenheit";
+    }
+  };
+
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -40,10 +53,7 @@ export const AdminAbsenceList = ({
             const teamMember = getTeamMember(absence.teamMemberId);
 
             const substitution = substitutions.find(
-              (item) =>
-                item.teamMemberId === absence.teamMemberId &&
-                item.startDate === absence.startDate &&
-                item.endDate === absence.endDate,
+              (item) => item.absenceId === absence.id,
             );
 
             const substitute = substitution
@@ -61,7 +71,7 @@ export const AdminAbsenceList = ({
                     {formatDate(absence.endDate)}
                   </p>
 
-                  <p>Typ: {absence.type}</p>
+                  <p>Typ: {getAbsenceTypeLabel(absence.type)}</p>
 
                   <p>Vertretung: {substitute?.displayName ?? "Keine"}</p>
                 </div>
@@ -79,3 +89,5 @@ export const AdminAbsenceList = ({
     </section>
   );
 };
+
+AdminAbsenceList.displayName = "AdminAbsenceList";

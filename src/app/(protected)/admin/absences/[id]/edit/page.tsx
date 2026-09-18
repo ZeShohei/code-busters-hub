@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+
 import { getAppData } from "@/data/appData";
+
 import { AdminAbsenceForm } from "@/features/admin/absences/AdminAbsenceForm";
 
 import styles from "./page.module.css";
@@ -27,10 +29,7 @@ export default async function EditAbsencePage({
   }
 
   const substitution = substitutions.find(
-    (item) =>
-      item.teamMemberId === absence.teamMemberId &&
-      item.startDate === absence.startDate &&
-      item.endDate === absence.endDate,
+    (item) => item.absenceId === absence.id,
   );
 
   return (
