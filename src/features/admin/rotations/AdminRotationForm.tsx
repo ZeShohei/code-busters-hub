@@ -18,6 +18,8 @@ interface AdminRotationFormProps {
   teamMembers: TeamMember[];
 }
 
+type DeploymentScheduleMode = "continue" | "restart";
+
 const getThursdayOnOrAfter = (dateString: string) => {
   const date = parseDate(dateString);
 
@@ -76,6 +78,13 @@ export const AdminRotationForm = ({
     config.deploymentStartsWithT2,
   );
 
+  /*
+   * Standardmäßig führen wir bei einer neuen
+   * Deployment-Version den bestehenden Rhythmus fort.
+   */
+  const [deploymentScheduleMode, setDeploymentScheduleMode] =
+    useState<DeploymentScheduleMode>("continue");
+
   const [error, setError] = useState<string>();
 
   const [success, setSuccess] = useState<string>();
@@ -84,13 +93,21 @@ export const AdminRotationForm = ({
 
   const isDeployment = config.type === "deployment";
 
-  const firstDeploymentDate = useMemo(() => {
-    if (!isDeployment || !startDate) {
+  /*
+   * Diese Vorschau ist nur für einen bewussten
+   * Neustart relevant.
+   *
+   * Beim Fortsetzen wird der tatsächliche nächste
+   * Deployment-Slot serverseitig aus der bisherigen
+   * Rotation berechnet.
+   */
+  const firstRestartDeploymentDate = useMemo(() => {
+    if (!isDeployment || !startDate || deploymentScheduleMode !== "restart") {
       return undefined;
     }
 
     return getThursdayOnOrAfter(startDate);
-  }, [isDeployment, startDate]);
+  }, [deploymentScheduleMode, isDeployment, startDate]);
 
   const getTeamMember = (id: string) => {
     return activeTeamMembers.find((member) => member.id === id);
@@ -149,33 +166,49 @@ export const AdminRotationForm = ({
     setSuccess(undefined);
     setIsSaving(true);
 
-    const result = await updateRotationConfig({
-      type: config.type,
+    try {
+      const result = await updateRotationConfig({
+        type: config.type,
 
-      startDate,
+        startDate,
 
-      numberOfWeeks,
+        numberOfWeeks,
 
-      participantTeamMemberIds,
+        participantTeamMemberIds,
 
-      startTeamMemberId,
+        startTeamMemberId,
 
-      deploymentStartsWithT2,
-    });
+        deploymentStartsWithT2,
 
-    setIsSaving(false);
+        deploymentScheduleMode: isDeployment
+          ? deploymentScheduleMode
+          : "restart",
+      });
 
-    if (!result.success) {
-      setError(result.error ?? "Die Rotation konnte nicht gespeichert werden.");
+      if (!result.success) {
+        setError(
+          result.error ?? "Die Rotation konnte nicht gespeichert werden.",
+        );
 
-      return;
+        return;
+      }
+
+      if (isDeployment && result.continued && result.effectiveStartDate) {
+        setSuccess(
+          `Der bestehende Deployment-Rhythmus wurde fortgeführt. Die neue Konfiguration beginnt mit dem nächsten regulären Deployment am ${formatDate(
+            result.effectiveStartDate,
+          )}.`,
+        );
+      } else {
+        setSuccess(
+          "Rotationskonfiguration wurde gespeichert. Frühere Rotationen bleiben unverändert.",
+        );
+      }
+
+      router.refresh();
+    } finally {
+      setIsSaving(false);
     }
-
-    setSuccess(
-      "Rotationskonfiguration wurde gespeichert. Frühere Rotationen bleiben unverändert.",
-    );
-
-    router.refresh();
   };
 
   return (
@@ -208,7 +241,9 @@ export const AdminRotationForm = ({
 
       <div className={styles.fields}>
         <div className={styles.field}>
-          <label htmlFor={`${config.type}-start-date`}>Gültig ab</label>
+          <label htmlFor={`${config.type}-start-date`}>
+            {isDeployment ? "Änderung gültig ab" : "Gültig ab"}
+          </label>
 
           <input
             id={`${config.type}-start-date`}
@@ -248,9 +283,66 @@ export const AdminRotationForm = ({
       </div>
 
       {isDeployment ? (
+        <>
+          <div className={styles.field}>
+            <label htmlFor="deployment-schedule-mode">
+              Verhalten des Deployment-Rhythmus
+            </label>
+
+            <select
+              id="deployment-schedule-mode"
+              value={deploymentScheduleMode}
+              onChange={(event) => {
+                setDeploymentScheduleMode(
+                  event.target.value as DeploymentScheduleMode,
+                );
+
+                setSuccess(undefined);
+
+                setError(undefined);
+              }}
+            >
+              <option value="continue">Rhythmus fortsetzen</option>
+
+              <option value="restart">Rotation neu starten</option>
+            </select>
+          </div>
+
+          {deploymentScheduleMode === "continue" ? (
+            <div className={styles.info}>
+              <strong>Bestehenden Rhythmus fortsetzen</strong>
+
+              <p>
+                Der nächste reguläre Deployment-Termin wird automatisch aus der
+                bisherigen Rotation ermittelt. Dabei bleiben sowohl der Wechsel
+                zwischen T2 Team und Code Busters als auch die interne
+                Code-Busters-Reihenfolge erhalten.
+              </p>
+
+              <p>
+                Das gewählte Datum ist der frühestmögliche Zeitpunkt der
+                Änderung. Die neue Konfiguration beginnt tatsächlich mit dem
+                ersten regulären Deployment ab diesem Datum.
+              </p>
+            </div>
+          ) : (
+            <div className={styles.info}>
+              <strong>Rotation bewusst neu starten</strong>
+
+              <p>
+                Verwende diese Option nur, wenn T2/Code-Busters und die interne
+                Personenrotation ab diesem Zeitpunkt bewusst neu festgelegt
+                werden sollen.
+              </p>
+            </div>
+          )}
+        </>
+      ) : null}
+
+      {isDeployment && deploymentScheduleMode === "restart" ? (
         <div className={styles.field}>
           <label htmlFor="deployment-first-team">
-            Erstes Deployment der neuen Konfiguration
+            Erstes Deployment der neuen Rotation
           </label>
 
           <select
@@ -271,13 +363,15 @@ export const AdminRotationForm = ({
         </div>
       ) : null}
 
-      {isDeployment && firstDeploymentDate ? (
+      {isDeployment &&
+      deploymentScheduleMode === "restart" &&
+      firstRestartDeploymentDate ? (
         <div className={styles.info}>
           <strong>Erster regulärer Deployment-Termin</strong>
 
           <p>
-            {getWeekdayLabel(firstDeploymentDate)},{" "}
-            {formatDate(firstDeploymentDate)}
+            {getWeekdayLabel(firstRestartDeploymentDate)},{" "}
+            {formatDate(firstRestartDeploymentDate)}
             {" – "}
             {deploymentStartsWithT2
               ? "T2 Team"
@@ -288,8 +382,10 @@ export const AdminRotationForm = ({
           <p>
             Danach:{" "}
             {deploymentStartsWithT2
-              ? `${firstInternalTeamMember?.displayName ?? "Code Busters"} → T2 Team → nächste Code-Busters-Person → T2 Team`
-              : `T2 Team → nächste Code-Busters-Person → T2 Team`}
+              ? `${
+                  firstInternalTeamMember?.displayName ?? "Code Busters"
+                } → T2 Team → nächste Code-Busters-Person → T2 Team`
+              : "T2 Team → nächste Code-Busters-Person → T2 Team"}
             .
           </p>
         </div>
@@ -359,42 +455,52 @@ export const AdminRotationForm = ({
         )}
       </fieldset>
 
-      <div className={styles.field}>
-        <label htmlFor={`${config.type}-start-member`}>
-          {isDeployment
-            ? "Erste Code-Busters-Person"
-            : "Erste Person der Rotation"}
-        </label>
+      {/*
+       * Beim Fortsetzen wird die nächste Person
+       * automatisch aus der bisherigen Rotation
+       * bestimmt.
+       *
+       * Nur Dispatcher und bewusster Deployment-
+       * Neustart benötigen eine manuelle Startperson.
+       */}
+      {!isDeployment || deploymentScheduleMode === "restart" ? (
+        <div className={styles.field}>
+          <label htmlFor={`${config.type}-start-member`}>
+            {isDeployment
+              ? "Erste Code-Busters-Person"
+              : "Erste Person der Rotation"}
+          </label>
 
-        <select
-          id={`${config.type}-start-member`}
-          required
-          value={startTeamMemberId}
-          onChange={(event) => {
-            setStartTeamMemberId(event.target.value);
+          <select
+            id={`${config.type}-start-member`}
+            required
+            value={startTeamMemberId}
+            onChange={(event) => {
+              setStartTeamMemberId(event.target.value);
 
-            setSuccess(undefined);
+              setSuccess(undefined);
 
-            setError(undefined);
-          }}
-        >
-          <option value="">Bitte auswählen</option>
+              setError(undefined);
+            }}
+          >
+            <option value="">Bitte auswählen</option>
 
-          {participantTeamMemberIds.map((teamMemberId) => {
-            const teamMember = getTeamMember(teamMemberId);
+            {participantTeamMemberIds.map((teamMemberId) => {
+              const teamMember = getTeamMember(teamMemberId);
 
-            if (!teamMember) {
-              return null;
-            }
+              if (!teamMember) {
+                return null;
+              }
 
-            return (
-              <option key={teamMember.id} value={teamMember.id}>
-                {teamMember.displayName}
-              </option>
-            );
-          })}
-        </select>
-      </div>
+              return (
+                <option key={teamMember.id} value={teamMember.id}>
+                  {teamMember.displayName}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      ) : null}
 
       {error ? (
         <p className={styles.error} role="alert">
