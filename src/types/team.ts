@@ -1,3 +1,5 @@
+export type TeamMemberRole = "admin" | "member";
+
 export interface TeamMember {
   id: string;
   firstName: string;
@@ -5,6 +7,7 @@ export interface TeamMember {
   displayName: string;
   email: string;
   active: boolean;
+  role: TeamMemberRole;
 }
 
 export interface Absence {

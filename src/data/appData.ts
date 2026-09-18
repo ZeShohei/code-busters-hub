@@ -1,13 +1,15 @@
 import "server-only";
 
-import { generateRotations } from "@/features/rotations/utils";
 import { prisma } from "@/lib/prisma";
+
 import type {
   Absence,
   RotationConfig,
   Substitution,
   TeamMember,
 } from "@/types/team";
+
+import { generateRotations } from "@/features/rotations/utils";
 
 const toDateString = (date: Date) => {
   return date.toISOString().slice(0, 10);
@@ -47,6 +49,9 @@ export const getAppData = async () => {
             },
           },
         },
+        orderBy: {
+          startDate: "asc",
+        },
       }),
     ]);
 
@@ -57,6 +62,7 @@ export const getAppData = async () => {
     displayName: member.displayName,
     email: member.email,
     active: member.active,
+    role: member.role,
   }));
 
   const absences: Absence[] = absenceRows.map((absence) => ({

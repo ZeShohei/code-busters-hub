@@ -1,0 +1,117 @@
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.item {
+    display: grid;
+    grid-template-columns:
+    minmax(0, 1fr)
+    auto
+    auto;
+    align-items: center;
+    gap: 1rem;
+
+    padding: 1rem;
+
+    border: 1px solid #d9d9d9;
+    border-radius: 0.75rem;
+
+    background: #ffffff;
+}
+
+.person {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    min-width: 0;
+}
+
+.email {
+    overflow: hidden;
+
+    color: #667085;
+    font-size: 0.875rem;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.adminBadge,
+.memberBadge,
+.activeBadge,
+.inactiveBadge {
+    display: inline-flex;
+
+    width: fit-content;
+    padding: 0.25rem 0.5rem;
+
+    border-radius: 999rem;
+
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.adminBadge {
+    background: #eef4ff;
+    color: #3538cd;
+}
+
+.memberBadge {
+    background: #f2f4f7;
+    color: #344054;
+}
+
+.activeBadge {
+    background: #ecfdf3;
+    color: #027a48;
+}
+
+.inactiveBadge {
+    background: #f2f4f7;
+    color: #667085;
+}
+
+.editLink {
+    padding: 0.5rem 0.75rem;
+
+    border: 1px solid #d0d5dd;
+    border-radius: 0.5rem;
+
+    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.editLink:hover {
+    background: #f6f6f6;
+}
+
+.editLink:focus-visible {
+    outline: 0.125rem solid #111111;
+    outline-offset: 0.125rem;
+}
+
+@media (max-width: 45rem) {
+    .item {
+        grid-template-columns: 1fr;
+    }
+
+    .badges {
+        justify-content: flex-start;
+    }
+
+    .editLink {
+        width: fit-content;
+    }
+}

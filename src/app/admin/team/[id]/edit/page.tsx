@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
-import { getAppData } from "@/data/appData";
-import { AdminTeamMemberForm } from "@/features/admin/team/AdminTeamMemberForm";
 
-import styles from "./page.module.css";
+import { getAppData } from "@/data/appData";
+
+import { AdminTeamMemberForm } from "@/features/admin/team/AdminTeamMemberForm";
 
 interface EditTeamMemberPageProps {
   params: Promise<{
@@ -27,7 +27,7 @@ export default async function EditTeamMemberPage({
   }
 
   return (
-    <div className={styles.page}>
+    <>
       <Breadcrumbs
         items={[
           {
@@ -46,11 +46,11 @@ export default async function EditTeamMemberPage({
 
       <PageHeader
         eyebrow="Administration"
-        title="Teammitglied bearbeiten"
-        description="Persönliche Daten und Status des Teammitglieds verwalten."
+        title={teamMember.displayName}
+        description="Teammitglied, Rolle und Benutzerstatus bearbeiten."
       />
 
       <AdminTeamMemberForm teamMember={teamMember} />
-    </div>
+    </>
   );
 }

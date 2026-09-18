@@ -95,7 +95,6 @@
 
 .card:hover {
     transform: translateY(-0.125rem);
-
     border-color: #b8b8b8;
 
     box-shadow:
@@ -120,7 +119,6 @@
 
 .cardMeta {
     width: fit-content;
-
     padding: 0.25rem 0.5rem;
 
     border-radius: 999rem;

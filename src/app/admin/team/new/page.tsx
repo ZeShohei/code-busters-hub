@@ -1,12 +1,11 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
-import { AdminTeamMemberForm } from "@/features/admin/team/AdminTeamMemberForm";
 
-import styles from "./page.module.css";
+import { AdminTeamMemberForm } from "@/features/admin/team/AdminTeamMemberForm";
 
 export default function NewTeamMemberPage() {
   return (
-    <div className={styles.page}>
+    <>
       <Breadcrumbs
         items={[
           {
@@ -26,10 +25,10 @@ export default function NewTeamMemberPage() {
       <PageHeader
         eyebrow="Administration"
         title="Teammitglied hinzufügen"
-        description="Füge ein neues Teammitglied hinzu."
+        description="Lege ein neues Teammitglied an und bestimme dessen Rolle."
       />
 
       <AdminTeamMemberForm />
-    </div>
+    </>
   );
 }

@@ -5,10 +5,13 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/features/admin/requireAdmin";
 import { prisma } from "@/lib/prisma";
 
+import type { TeamMemberRole } from "@/types/team";
+
 interface SaveTeamMemberInput {
   firstName: string;
   lastName: string;
   email: string;
+  role: TeamMemberRole;
 }
 
 interface ActionResult {
@@ -21,6 +24,7 @@ const normalizeInput = (input: SaveTeamMemberInput) => {
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     email: input.email.trim().toLowerCase(),
+    role: input.role,
   };
 };
 
@@ -35,6 +39,10 @@ const validateInput = (input: SaveTeamMemberInput): string | undefined => {
     return "Bitte eine gültige E-Mail-Adresse eingeben.";
   }
 
+  if (normalized.role !== "admin" && normalized.role !== "member") {
+    return "Die ausgewählte Rolle ist ungültig.";
+  }
+
   return undefined;
 };
 
@@ -43,9 +51,11 @@ const revalidateTeamPages = () => {
   revalidatePath("/team");
   revalidatePath("/absences");
   revalidatePath("/rotations");
+
   revalidatePath("/admin");
   revalidatePath("/admin/team");
   revalidatePath("/admin/absences");
+  revalidatePath("/admin/rotations");
 };
 
 export const createTeamMember = async (
@@ -72,6 +82,7 @@ export const createTeamMember = async (
         displayName: `${normalized.firstName} ${normalized.lastName}`,
         email: normalized.email,
         active: true,
+        role: normalized.role,
       },
     });
 
@@ -95,7 +106,7 @@ export const updateTeamMember = async (
   id: string,
   input: SaveTeamMemberInput,
 ): Promise<ActionResult> => {
-  await requireAdmin();
+  const currentUser = await requireAdmin();
 
   const validationError = validateInput(input);
 
@@ -106,9 +117,29 @@ export const updateTeamMember = async (
     };
   }
 
+  if (id === currentUser.id && input.role !== "admin") {
+    return {
+      success: false,
+      error: "Du kannst dir deine eigene Admin-Rolle nicht entziehen.",
+    };
+  }
+
   const normalized = normalizeInput(input);
 
   try {
+    const existingMember = await prisma.teamMember.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!existingMember) {
+      return {
+        success: false,
+        error: "Das Teammitglied wurde nicht gefunden.",
+      };
+    }
+
     await prisma.teamMember.update({
       where: {
         id,
@@ -118,6 +149,7 @@ export const updateTeamMember = async (
         lastName: normalized.lastName,
         displayName: `${normalized.firstName} ${normalized.lastName}`,
         email: normalized.email,
+        role: normalized.role,
       },
     });
 
@@ -140,9 +172,29 @@ export const setTeamMemberActive = async (
   id: string,
   active: boolean,
 ): Promise<ActionResult> => {
-  await requireAdmin();
+  const currentUser = await requireAdmin();
+
+  if (id === currentUser.id && !active) {
+    return {
+      success: false,
+      error: "Du kannst deinen eigenen Benutzer nicht deaktivieren.",
+    };
+  }
 
   try {
+    const teamMember = await prisma.teamMember.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!teamMember) {
+      return {
+        success: false,
+        error: "Das Teammitglied wurde nicht gefunden.",
+      };
+    }
+
     await prisma.teamMember.update({
       where: {
         id,

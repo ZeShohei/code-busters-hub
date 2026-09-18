@@ -174,7 +174,7 @@ export default async function AdminPage() {
             <div>
               <h3>Team</h3>
 
-              <p>Teammitglieder anlegen, bearbeiten oder deaktivieren.</p>
+              <p>Teammitglieder anlegen, bearbeiten und Rollen verwalten.</p>
             </div>
 
             <span className={styles.cardMeta}>

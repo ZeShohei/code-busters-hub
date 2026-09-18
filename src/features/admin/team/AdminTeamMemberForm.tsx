@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { FormEvent, useState } from "react";
 
-import type { TeamMember } from "@/types/team";
+import { useRouter } from "next/navigation";
+
+import type { TeamMember, TeamMemberRole } from "@/types/team";
 
 import {
   createTeamMember,
@@ -13,42 +14,36 @@ import {
 
 import styles from "./AdminTeamMemberForm.module.css";
 
-interface TeamMemberFormValues {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
 interface AdminTeamMemberFormProps {
   teamMember?: TeamMember;
 }
 
-const defaultValues: TeamMemberFormValues = {
-  firstName: "",
-  lastName: "",
-  email: "",
-};
+interface FormValues {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: TeamMemberRole;
+}
 
 export const AdminTeamMemberForm = ({
   teamMember,
 }: AdminTeamMemberFormProps) => {
   const router = useRouter();
 
-  const [values, setValues] = useState<TeamMemberFormValues>(
-    teamMember
-      ? {
-          firstName: teamMember.firstName,
-          lastName: teamMember.lastName,
-          email: teamMember.email,
-        }
-      : defaultValues,
-  );
+  const isEditing = teamMember !== undefined;
+
+  const [values, setValues] = useState<FormValues>({
+    firstName: teamMember?.firstName ?? "",
+    lastName: teamMember?.lastName ?? "",
+    email: teamMember?.email ?? "",
+    role: teamMember?.role ?? "member",
+  });
 
   const [error, setError] = useState<string>();
-  const [isSaving, setIsSaving] = useState(false);
-  const [isChangingStatus, setIsChangingStatus] = useState(false);
 
-  const isEditing = teamMember !== undefined;
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -56,22 +51,24 @@ export const AdminTeamMemberForm = ({
     setError(undefined);
     setIsSaving(true);
 
-    const result = isEditing
-      ? await updateTeamMember(teamMember.id, values)
-      : await createTeamMember(values);
+    try {
+      const result = teamMember
+        ? await updateTeamMember(teamMember.id, values)
+        : await createTeamMember(values);
 
-    setIsSaving(false);
+      if (!result.success) {
+        setError(
+          result.error ?? "Die Änderung konnte nicht gespeichert werden.",
+        );
 
-    if (!result.success) {
-      setError(
-        result.error ?? "Das Teammitglied konnte nicht gespeichert werden.",
-      );
+        return;
+      }
 
-      return;
+      router.push("/admin/team");
+      router.refresh();
+    } finally {
+      setIsSaving(false);
     }
-
-    router.push("/admin/team");
-    router.refresh();
   };
 
   const handleStatusChange = async () => {
@@ -79,128 +76,119 @@ export const AdminTeamMemberForm = ({
       return;
     }
 
-    const newStatus = !teamMember.active;
-
-    if (!newStatus) {
-      const confirmed = window.confirm(
-        "Möchtest du dieses Teammitglied wirklich deaktivieren? Historische Daten bleiben erhalten.",
-      );
-
-      if (!confirmed) {
-        return;
-      }
-    }
-
     setError(undefined);
     setIsChangingStatus(true);
 
-    const result = await setTeamMemberActive(teamMember.id, newStatus);
+    try {
+      const newStatus = !teamMember.active;
 
-    setIsChangingStatus(false);
+      const result = await setTeamMemberActive(teamMember.id, newStatus);
 
-    if (!result.success) {
-      setError(result.error ?? "Der Status konnte nicht geändert werden.");
+      if (!result.success) {
+        setError(result.error ?? "Der Status konnte nicht geändert werden.");
 
-      return;
+        return;
+      }
+
+      router.refresh();
+    } finally {
+      setIsChangingStatus(false);
     }
-
-    router.push("/admin/team");
-    router.refresh();
   };
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <div className={styles.field}>
-        <label htmlFor="firstName">Vorname</label>
+      <div className={styles.fields}>
+        <div className={styles.field}>
+          <label htmlFor="firstName">Vorname</label>
 
-        <input
-          id="firstName"
-          type="text"
-          autoComplete="given-name"
-          required
-          value={values.firstName}
-          onChange={(event) =>
-            setValues((current) => ({
-              ...current,
-              firstName: event.target.value,
-            }))
-          }
-        />
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="lastName">Nachname</label>
-
-        <input
-          id="lastName"
-          type="text"
-          autoComplete="family-name"
-          required
-          value={values.lastName}
-          onChange={(event) =>
-            setValues((current) => ({
-              ...current,
-              lastName: event.target.value,
-            }))
-          }
-        />
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="email">E-Mail-Adresse</label>
-
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={values.email}
-          onChange={(event) =>
-            setValues((current) => ({
-              ...current,
-              email: event.target.value,
-            }))
-          }
-        />
-      </div>
-
-      {isEditing ? (
-        <div className={styles.status}>
-          <span>Status</span>
-
-          <strong>{teamMember.active ? "Aktiv" : "Inaktiv"}</strong>
+          <input
+            id="firstName"
+            name="firstName"
+            type="text"
+            required
+            value={values.firstName}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                firstName: event.target.value,
+              }))
+            }
+          />
         </div>
-      ) : null}
 
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
+        <div className={styles.field}>
+          <label htmlFor="lastName">Nachname</label>
 
-      <div className={styles.actions}>
-        <button
-          type="submit"
-          className={styles.primaryButton}
-          disabled={isSaving || isChangingStatus}
-        >
-          {isSaving
-            ? "Speichern..."
-            : isEditing
-              ? "Änderungen speichern"
-              : "Teammitglied anlegen"}
-        </button>
+          <input
+            id="lastName"
+            name="lastName"
+            type="text"
+            required
+            value={values.lastName}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                lastName: event.target.value,
+              }))
+            }
+          />
+        </div>
 
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          disabled={isSaving || isChangingStatus}
-          onClick={() => router.push("/admin/team")}
-        >
-          Abbrechen
-        </button>
+        <div className={styles.field}>
+          <label htmlFor="email">E-Mail-Adresse</label>
 
-        {teamMember ? (
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            value={values.email}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                email: event.target.value,
+              }))
+            }
+          />
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="role">Rolle</label>
+
+          <select
+            id="role"
+            name="role"
+            value={values.role}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                role: event.target.value as TeamMemberRole,
+              }))
+            }
+          >
+            <option value="member">Mitglied</option>
+
+            <option value="admin">Admin</option>
+          </select>
+
+          <span className={styles.hint}>
+            Admins können Team, Abwesenheiten und Rotationen verwalten.
+          </span>
+        </div>
+      </div>
+
+      {teamMember ? (
+        <div className={styles.statusBox}>
+          <div>
+            <strong>Benutzerstatus</strong>
+
+            <p>
+              Dieses Teammitglied ist aktuell{" "}
+              {teamMember.active ? "aktiv" : "deaktiviert"}.
+            </p>
+          </div>
+
           <button
             type="button"
             className={
@@ -212,12 +200,41 @@ export const AdminTeamMemberForm = ({
             onClick={handleStatusChange}
           >
             {isChangingStatus
-              ? "Status ändern..."
+              ? "Wird geändert …"
               : teamMember.active
-                ? "Teammitglied deaktivieren"
-                : "Teammitglied aktivieren"}
+                ? "Deaktivieren"
+                : "Aktivieren"}
           </button>
-        ) : null}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className={styles.error} role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={() => router.push("/admin/team")}
+          disabled={isSaving || isChangingStatus}
+        >
+          Abbrechen
+        </button>
+
+        <button
+          type="submit"
+          className={styles.primaryButton}
+          disabled={isSaving || isChangingStatus}
+        >
+          {isSaving
+            ? "Speichert …"
+            : isEditing
+              ? "Änderungen speichern"
+              : "Teammitglied anlegen"}
+        </button>
       </div>
     </form>
   );
