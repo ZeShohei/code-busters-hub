@@ -4,18 +4,17 @@ import { Navigation } from "@/components/Navigation/Navigation";
 
 import { LogoutButton } from "@/features/auth/LogoutButton";
 
-import { getCurrentUser } from "@/lib/auth";
+import type { CurrentUser } from "@/lib/auth";
 
 import styles from "./AppShell.module.css";
 
 interface AppShellProps {
   children: ReactNode;
+  currentUser: CurrentUser;
 }
 
-export const AppShell = async ({ children }: AppShellProps) => {
-  const currentUser = await getCurrentUser();
-
-  const isAdmin = currentUser?.role === "admin";
+export const AppShell = ({ children, currentUser }: AppShellProps) => {
+  const isAdmin = currentUser.role === "admin";
 
   return (
     <div className={styles.appShell}>
@@ -24,7 +23,7 @@ export const AppShell = async ({ children }: AppShellProps) => {
 
         <Navigation isAdmin={isAdmin} />
 
-        {currentUser ? <LogoutButton /> : null}
+        <LogoutButton />
       </aside>
 
       <main className={styles.content}>{children}</main>
