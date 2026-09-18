@@ -26,6 +26,10 @@ const navigationItems = [
     href: "/rotations",
     label: "Rotationen",
   },
+  {
+    href: "/profile",
+    label: "Mein Profil",
+  },
 ];
 
 const adminNavigationItem = {

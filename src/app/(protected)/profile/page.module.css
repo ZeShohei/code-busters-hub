@@ -1,0 +1,94 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+
+    width: 100%;
+}
+
+.profileCard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    padding: 1.5rem;
+
+    border: 0.0625rem solid
+    var(--color-border-subtle);
+    border-radius:
+            var(--radius-lg);
+
+    background:
+            var(--color-background-surface);
+
+    box-shadow:
+            var(--shadow-sm);
+}
+
+.profileCard h2,
+.profileCard p {
+    margin: 0;
+}
+
+.profileCard p {
+    margin-top: 0.375rem;
+
+    color:
+            var(--color-text-secondary);
+
+    font-size: 0.875rem;
+}
+
+.profileData {
+    display: grid;
+    grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+    gap: 1rem;
+
+    margin: 0;
+}
+
+.profileData > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    padding: 1rem;
+
+    border: 0.0625rem solid
+    var(--color-border-subtle);
+    border-radius:
+            var(--radius-md);
+
+    background:
+            var(--color-background-subtle);
+}
+
+.profileData dt {
+    color:
+            var(--color-text-secondary);
+
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.profileData dd {
+    margin: 0;
+
+    color:
+            var(--color-text-primary);
+
+    font-weight: 600;
+
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 45rem) {
+    .profileData {
+        grid-template-columns: 1fr;
+    }
+}
