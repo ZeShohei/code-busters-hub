@@ -121,6 +121,42 @@ const validateBusinessRules = async (
     return `${substitute.displayName} ist im ausgewählten Zeitraum selbst abwesend und kann die Vertretung nicht übernehmen.`;
   }
 
+  const substituteConflict = await prisma.substitution.findFirst({
+    where: {
+      substituteTeamMemberId: substitute.id,
+
+      absence: {
+        startDate: {
+          lte: endDate,
+        },
+
+        endDate: {
+          gte: startDate,
+        },
+
+        ...(currentAbsenceId
+          ? {
+              id: {
+                not: currentAbsenceId,
+              },
+            }
+          : {}),
+      },
+    },
+
+    include: {
+      absence: {
+        include: {
+          teamMember: true,
+        },
+      },
+    },
+  });
+
+  if (substituteConflict) {
+    return `${substitute.displayName} vertritt in diesem Zeitraum bereits ${substituteConflict.absence.teamMember.displayName}.`;
+  }
+
   return undefined;
 };
 
