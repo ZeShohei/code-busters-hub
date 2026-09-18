@@ -1,14 +1,14 @@
 import { Suspense } from "react";
-
-import { absences, substitutions } from "@/features/absences/mockData";
 import { AbsenceList } from "@/features/absences/AbsenceList";
-import { teamMembers } from "@/features/team/mockData";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+import { getAppData } from "@/data/appData";
 
 import styles from "./page.module.css";
 
-export default function AbsencesPage() {
+export default async function AbsencesPage() {
+  const { teamMembers, absences, substitutions } = await getAppData();
+
   return (
     <section className={styles.page}>
       <Breadcrumbs

@@ -22,6 +22,10 @@ const navigationItems = [
     href: "/rotations",
     label: "Rotationen",
   },
+  {
+    href: "/admin",
+    label: "Admin",
+  },
 ];
 
 const isNavigationItemActive = (pathname: string, href: string) => {

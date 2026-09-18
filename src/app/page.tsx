@@ -1,18 +1,22 @@
-import { absences, substitutions } from "@/features/absences/mockData";
-import { deploymentRotations } from "@/features/deploymentRotation/mockData";
-import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import { resolveRotation } from "@/features/rotations/utils";
-import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
 import { WeekOverview } from "@/features/weekOverview/WeekOverview";
 import { getCurrentRotation, isDateAfter, isDateInRange } from "@/utils/date";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { DashboardCard } from "@/components/DashboardCard/DashboardCard";
 import { UpcomingAbsences } from "@/features/absences/UpcomingAbsences";
+import { getAppData } from "@/data/appData";
 
 import styles from "./page.module.css";
 
-export default function Home() {
+export default async function Home() {
+  const {
+    teamMembers,
+    absences,
+    substitutions,
+    dispatcherRotations,
+    deploymentRotations,
+  } = await getAppData();
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
 
   const currentDeployment = getCurrentRotation(deploymentRotations);

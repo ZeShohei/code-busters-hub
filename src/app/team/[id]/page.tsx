@@ -1,9 +1,4 @@
 import { notFound } from "next/navigation";
-
-import { absences, substitutions } from "@/features/absences/mockData";
-import { deploymentRotations } from "@/features/deploymentRotation/mockData";
-import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
-import { teamMembers } from "@/features/team/mockData";
 import { getTeamMemberName } from "@/features/team/utils";
 import type { Absence, RotationAssignment } from "@/types/team";
 import {
@@ -16,6 +11,7 @@ import {
 } from "@/utils/date";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+import { getAppData } from "@/data/appData";
 
 import styles from "./page.module.css";
 
@@ -122,7 +118,19 @@ const renderRotationList = (
 export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
   const { id } = await params;
 
+  const {
+    teamMembers,
+    absences,
+    substitutions,
+    dispatcherRotations,
+    deploymentRotations,
+  } = await getAppData();
+
   const teamMember = teamMembers.find((member) => member.id === id);
+
+  if (!teamMember) {
+    notFound();
+  }
 
   if (!teamMember) {
     notFound();

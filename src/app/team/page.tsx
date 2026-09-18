@@ -1,7 +1,3 @@
-import {
-  deploymentRotationConfig,
-  dispatcherRotationConfig,
-} from "@/features/rotations/config";
 import { resolveRotation } from "@/features/rotations/utils";
 import { TeamList } from "@/features/team/TeamList";
 import { getCurrentRotation } from "@/utils/date";

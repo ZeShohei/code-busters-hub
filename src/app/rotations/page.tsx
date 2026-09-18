@@ -1,16 +1,20 @@
 import { Suspense } from "react";
-
-import { absences, substitutions } from "@/features/absences/mockData";
-import { deploymentRotations } from "@/features/deploymentRotation/mockData";
-import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import { RotationsOverview } from "@/features/rotations/RotationsOverview";
-import { teamMembers } from "@/features/team/mockData";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+import { getAppData } from "@/data/appData";
 
 import styles from "./page.module.css";
 
-export default function RotationsPage() {
+export default async function RotationsPage() {
+  const {
+    teamMembers,
+    absences,
+    substitutions,
+    dispatcherRotations,
+    deploymentRotations,
+  } = await getAppData();
+
   return (
     <section className={styles.page}>
       <Breadcrumbs
