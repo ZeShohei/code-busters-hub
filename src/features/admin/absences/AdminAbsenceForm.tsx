@@ -1,11 +1,16 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import type { Absence, TeamMember } from "@/types/team";
 
-import { createAbsence, deleteAbsence, updateAbsence } from "./actions";
+import {
+  createAbsence,
+  deleteAbsence,
+  getAvailableSubstitutes,
+  updateAbsence,
+} from "./actions";
 
 import styles from "./AdminAbsenceForm.module.css";
 
@@ -31,6 +36,13 @@ const defaultValues: AdminAbsenceFormValues = {
   substituteTeamMemberId: "",
 };
 
+interface SubstituteAvailability {
+  id: string;
+  displayName: string;
+  available: boolean;
+  reason?: string;
+}
+
 export const AdminAbsenceForm = ({
   teamMembers,
   absenceId,
@@ -48,11 +60,51 @@ export const AdminAbsenceForm = ({
 
   const isEditing = absenceId !== undefined;
 
-  const availableSubstitutes = teamMembers.filter(
-    (member) =>
-      member.id !== values.teamMemberId &&
-      (member.active || member.id === values.substituteTeamMemberId),
-  );
+  const [availableSubstitutes, setAvailableSubstitutes] = useState<
+    SubstituteAvailability[]
+  >([]);
+
+  const [isLoadingSubstitutes, setIsLoadingSubstitutes] = useState(false);
+
+  useEffect(() => {
+    if (
+      !values.teamMemberId ||
+      !values.startDate ||
+      !values.endDate ||
+      values.endDate < values.startDate
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSubstitutes = async () => {
+      setIsLoadingSubstitutes(true);
+
+      try {
+        const result = await getAvailableSubstitutes({
+          teamMemberId: values.teamMemberId,
+          startDate: values.startDate,
+          endDate: values.endDate,
+          currentAbsenceId: absenceId,
+        });
+
+        if (!cancelled) {
+          setAvailableSubstitutes(result);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSubstitutes(false);
+        }
+      }
+    };
+
+    void loadSubstitutes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [absenceId, values.teamMemberId, values.startDate, values.endDate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -130,11 +182,10 @@ export const AdminAbsenceForm = ({
             setValues((current) => ({
               ...current,
               teamMemberId,
-              substituteTeamMemberId:
-                current.substituteTeamMemberId === teamMemberId
-                  ? ""
-                  : current.substituteTeamMemberId,
+              substituteTeamMemberId: "",
             }));
+
+            setAvailableSubstitutes([]);
           }}
         >
           <option value="">Bitte auswählen</option>
@@ -181,7 +232,10 @@ export const AdminAbsenceForm = ({
               setValues((current) => ({
                 ...current,
                 startDate: event.target.value,
+                substituteTeamMemberId: "",
               }));
+
+              setAvailableSubstitutes([]);
             }}
           />
         </div>
@@ -198,7 +252,10 @@ export const AdminAbsenceForm = ({
               setValues((current) => ({
                 ...current,
                 endDate: event.target.value,
+                substituteTeamMemberId: "",
               }));
+
+              setAvailableSubstitutes([]);
             }}
           />
         </div>
@@ -210,6 +267,12 @@ export const AdminAbsenceForm = ({
         <select
           id="substitute"
           value={values.substituteTeamMemberId}
+          disabled={
+            isLoadingSubstitutes ||
+            !values.teamMemberId ||
+            !values.startDate ||
+            !values.endDate
+          }
           onChange={(event) => {
             setValues((current) => ({
               ...current,
@@ -220,14 +283,31 @@ export const AdminAbsenceForm = ({
           <option value="">Keine Vertretung</option>
 
           {availableSubstitutes.map((teamMember) => (
-            <option key={teamMember.id} value={teamMember.id}>
+            <option
+              key={teamMember.id}
+              value={teamMember.id}
+              disabled={!teamMember.available}
+            >
               {teamMember.displayName}
+              {!teamMember.available && teamMember.reason
+                ? ` – ${teamMember.reason}`
+                : ""}
             </option>
           ))}
         </select>
-        <p className={styles.hint}>
-          Die Vertretung darf im gewählten Zeitraum nicht selbst abwesend sein.
-        </p>
+
+        {isLoadingSubstitutes ? (
+          <p className={styles.hint}>Verfügbarkeit wird geprüft...</p>
+        ) : !values.teamMemberId || !values.startDate || !values.endDate ? (
+          <p className={styles.hint}>
+            Wähle zuerst Teammitglied und Zeitraum aus.
+          </p>
+        ) : (
+          <p className={styles.hint}>
+            Nicht verfügbare Personen können nicht als Vertretung ausgewählt
+            werden.
+          </p>
+        )}
       </div>
 
       {error ? (

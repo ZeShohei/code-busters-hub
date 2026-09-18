@@ -160,6 +160,117 @@ const validateBusinessRules = async (
   return undefined;
 };
 
+interface SubstituteAvailability {
+  id: string;
+  displayName: string;
+  available: boolean;
+  reason?: string;
+}
+
+interface GetAvailableSubstitutesInput {
+  teamMemberId: string;
+  startDate: string;
+  endDate: string;
+  currentAbsenceId?: string;
+}
+
+export const getAvailableSubstitutes = async (
+  input: GetAvailableSubstitutesInput,
+): Promise<SubstituteAvailability[]> => {
+  if (
+    !input.teamMemberId ||
+    !input.startDate ||
+    !input.endDate ||
+    input.endDate < input.startDate
+  ) {
+    return [];
+  }
+
+  const startDate = toDatabaseDate(input.startDate);
+
+  const endDate = toDatabaseDate(input.endDate);
+
+  const candidates = await prisma.teamMember.findMany({
+    where: {
+      active: true,
+
+      id: {
+        not: input.teamMemberId,
+      },
+    },
+
+    orderBy: {
+      displayName: "asc",
+    },
+  });
+
+  return Promise.all(
+    candidates.map(async (candidate): Promise<SubstituteAvailability> => {
+      const absence = await prisma.absence.findFirst({
+        where: {
+          teamMemberId: candidate.id,
+
+          startDate: {
+            lte: endDate,
+          },
+
+          endDate: {
+            gte: startDate,
+          },
+        },
+      });
+
+      if (absence) {
+        return {
+          id: candidate.id,
+          displayName: candidate.displayName,
+          available: false,
+          reason: "selbst abwesend",
+        };
+      }
+
+      const substitutionConflict = await prisma.substitution.findFirst({
+        where: {
+          substituteTeamMemberId: candidate.id,
+
+          absence: {
+            startDate: {
+              lte: endDate,
+            },
+
+            endDate: {
+              gte: startDate,
+            },
+
+            ...(input.currentAbsenceId
+              ? {
+                  id: {
+                    not: input.currentAbsenceId,
+                  },
+                }
+              : {}),
+          },
+        },
+      });
+
+      if (substitutionConflict) {
+        return {
+          id: candidate.id,
+          displayName: candidate.displayName,
+          available: false,
+          reason: "bereits als Vertretung eingetragen",
+        };
+      }
+
+      return {
+        id: candidate.id,
+        displayName: candidate.displayName,
+        available: true,
+      };
+    }),
+  );
+};
+
 const revalidateAbsencePages = () => {
   revalidatePath("/");
   revalidatePath("/team");
