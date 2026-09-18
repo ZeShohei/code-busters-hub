@@ -1,8 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
 import { useMemo } from "react";
+
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type {
   Absence,
@@ -44,6 +44,19 @@ const isRotationStatusFilter = (
     value === "upcoming" ||
     value === "past"
   );
+};
+
+const sortRotations = (
+  rotations: RotationAssignment[],
+  statusFilter: RotationStatusFilter,
+) => {
+  return [...rotations].sort((first, second) => {
+    if (statusFilter === "past") {
+      return second.startDate.localeCompare(first.startDate);
+    }
+
+    return first.startDate.localeCompare(second.startDate);
+  });
 };
 
 export const RotationsOverview = ({
@@ -105,12 +118,14 @@ export const RotationsOverview = ({
       return [];
     }
 
-    return dispatcherRotations.filter(
+    const filtered = dispatcherRotations.filter(
       (rotation) =>
         statusFilter === "all" ||
         getDateRangeStatus(rotation.startDate, rotation.endDate) ===
           statusFilter,
     );
+
+    return sortRotations(filtered, statusFilter);
   }, [dispatcherRotations, statusFilter, typeFilter]);
 
   const filteredDeploymentRotations = useMemo(() => {
@@ -118,12 +133,14 @@ export const RotationsOverview = ({
       return [];
     }
 
-    return deploymentRotations.filter(
+    const filtered = deploymentRotations.filter(
       (rotation) =>
         statusFilter === "all" ||
         getDateRangeStatus(rotation.startDate, rotation.endDate) ===
           statusFilter,
     );
+
+    return sortRotations(filtered, statusFilter);
   }, [deploymentRotations, statusFilter, typeFilter]);
 
   const resultCount =
@@ -151,6 +168,7 @@ export const RotationsOverview = ({
                 className={
                   typeFilter === value ? styles.activeFilter : styles.filter
                 }
+                aria-pressed={typeFilter === value}
                 onClick={() =>
                   updateFilters({
                     type: value,
@@ -181,6 +199,7 @@ export const RotationsOverview = ({
                 className={
                   statusFilter === value ? styles.activeFilter : styles.filter
                 }
+                aria-pressed={statusFilter === value}
                 onClick={() =>
                   updateFilters({
                     status: value,
@@ -194,8 +213,9 @@ export const RotationsOverview = ({
         </div>
       </div>
 
-      <span className={styles.resultCount}>
-        {resultCount} von {totalCount} Rotationen
+      <span className={styles.resultCount} aria-live="polite">
+        {resultCount} von {totalCount}{" "}
+        {totalCount === 1 ? "Rotation" : "Rotationen"}
       </span>
 
       {resultCount === 0 ? (
@@ -218,7 +238,7 @@ export const RotationsOverview = ({
           {filteredDeploymentRotations.length > 0 ? (
             <RotationList
               title="Deployment"
-              description="Alle zwei Wochen am Donnerstag. T2 Team und Code Busters wechseln sich ab; innerhalb der Code Busters rotiert die zuständige Person weiter."
+              description="Alle zwei Wochen findet ein Deployment statt. T2 Team und Code Busters wechseln sich ab; bei den Code Busters rotiert die zuständige Person weiter."
               rotations={filteredDeploymentRotations}
               absences={absences}
               substitutions={substitutions}

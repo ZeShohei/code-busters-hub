@@ -32,10 +32,10 @@ const getDeploymentKindLabel = (rotation: RotationAssignment) => {
       return "Sonderdeployment";
 
     case "rescheduled":
-      return "Verschoben";
+      return "Verschobenes Deployment";
 
     default:
-      return null;
+      return "Reguläres Deployment";
   }
 };
 
@@ -69,6 +69,10 @@ export const RotationList = ({
             teamMembers,
           );
 
+          const isDeployment = rotation.type === "deployment";
+
+          const isT2 = isT2TeamRotation(rotation);
+
           const cardClassName = [
             styles.card,
 
@@ -79,8 +83,6 @@ export const RotationList = ({
             .filter(Boolean)
             .join(" ");
 
-          const deploymentKindLabel = getDeploymentKindLabel(rotation);
-
           return (
             <article key={rotation.id} className={cardClassName}>
               <div className={styles.week}>
@@ -88,9 +90,11 @@ export const RotationList = ({
 
                 <strong>{getCalendarWeek(rotation.startDate)}</strong>
 
-                {deploymentKindLabel ? (
-                  <small>{deploymentKindLabel}</small>
-                ) : null}
+                {isDeployment ? (
+                  <small>{getDeploymentKindLabel(rotation)}</small>
+                ) : (
+                  <small>Dispatcher</small>
+                )}
               </div>
 
               <div className={styles.person}>
@@ -98,7 +102,7 @@ export const RotationList = ({
 
                 <strong>{assignedTeamMemberName}</strong>
 
-                {isT2TeamRotation(rotation) ? (
+                {isT2 ? (
                   <span>Externes Team</span>
                 ) : (
                   <RotationStatusBadge
@@ -113,12 +117,10 @@ export const RotationList = ({
               </div>
 
               <div className={styles.period}>
-                <span>
-                  {rotation.type === "deployment" ? "Termin" : "Zeitraum"}
-                </span>
+                <span>{isDeployment ? "Deployment-Termin" : "Zeitraum"}</span>
 
                 <strong>
-                  {rotation.type === "deployment"
+                  {isDeployment
                     ? formatDate(rotation.startDate)
                     : `${formatDate(rotation.startDate)} – ${formatDate(
                         rotation.endDate,
@@ -128,11 +130,13 @@ export const RotationList = ({
                 {rotation.deploymentKind === "rescheduled" &&
                 rotation.originalDate ? (
                   <small>
-                    Ursprünglich: {formatDate(rotation.originalDate)}
+                    Ursprünglicher Termin: {formatDate(rotation.originalDate)}
                   </small>
                 ) : null}
 
-                {rotation.reason ? <small>{rotation.reason}</small> : null}
+                {rotation.reason ? (
+                  <small>Hinweis: {rotation.reason}</small>
+                ) : null}
               </div>
             </article>
           );
