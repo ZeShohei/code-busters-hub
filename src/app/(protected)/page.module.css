@@ -4,9 +4,42 @@
   gap: 3rem;
 }
 
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sectionHeader > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sectionHeader h2 {
+  color: var(--color-text-primary);
+
+  font-size: 1.25rem;
+}
+
+.sectionHeader p {
+  color: var(--color-text-secondary);
+
+  font-size: 0.875rem;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
   gap: 1rem;
 }
 
