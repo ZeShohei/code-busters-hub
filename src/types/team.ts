@@ -6,6 +6,7 @@ export interface TeamMember {
   lastName: string;
   displayName: string;
   email: string;
+  username: string | null;
   active: boolean;
   role: TeamMemberRole;
 }

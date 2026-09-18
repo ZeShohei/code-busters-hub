@@ -21,6 +21,10 @@ export const AdminTeamList = ({ teamMembers }: AdminTeamListProps) => {
             <strong>{teamMember.displayName}</strong>
 
             <span className={styles.email}>{teamMember.email}</span>
+
+            <span className={styles.email}>
+              Benutzername: {teamMember.username ?? "Nicht eingerichtet"}
+            </span>
           </div>
 
           <div className={styles.badges}>

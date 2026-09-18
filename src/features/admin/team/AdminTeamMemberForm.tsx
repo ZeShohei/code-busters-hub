@@ -22,6 +22,8 @@ interface FormValues {
   firstName: string;
   lastName: string;
   email: string;
+  username: string;
+  password: string;
   role: TeamMemberRole;
 }
 
@@ -36,6 +38,8 @@ export const AdminTeamMemberForm = ({
     firstName: teamMember?.firstName ?? "",
     lastName: teamMember?.lastName ?? "",
     email: teamMember?.email ?? "",
+    username: teamMember?.username ?? "",
+    password: "",
     role: teamMember?.role ?? "member",
   });
 
@@ -143,6 +147,7 @@ export const AdminTeamMemberForm = ({
             name="email"
             type="email"
             required
+            autoComplete="email"
             value={values.email}
             onChange={(event) =>
               setValues((current) => ({
@@ -151,6 +156,58 @@ export const AdminTeamMemberForm = ({
               }))
             }
           />
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="username">Benutzername</label>
+
+          <input
+            id="username"
+            name="username"
+            type="text"
+            required
+            autoComplete="username"
+            value={values.username}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                username: event.target.value,
+              }))
+            }
+          />
+
+          <span className={styles.hint}>
+            Mindestens 3 Zeichen. Erlaubt sind Buchstaben, Zahlen, Punkt,
+            Bindestrich und Unterstrich.
+          </span>
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="password">
+            {isEditing ? "Neues Passwort" : "Passwort"}
+          </label>
+
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required={!isEditing}
+            minLength={12}
+            value={values.password}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                password: event.target.value,
+              }))
+            }
+          />
+
+          <span className={styles.hint}>
+            {isEditing
+              ? "Leer lassen, wenn das aktuelle Passwort beibehalten werden soll."
+              : "Mindestens 12 Zeichen."}
+          </span>
         </div>
 
         <div className={styles.field}>

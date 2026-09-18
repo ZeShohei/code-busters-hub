@@ -1,5 +1,6 @@
 import "server-only";
 
+import { generateRotations } from "@/features/rotations/utils";
 import { prisma } from "@/lib/prisma";
 
 import type {
@@ -8,8 +9,6 @@ import type {
   Substitution,
   TeamMember,
 } from "@/types/team";
-
-import { generateRotations } from "@/features/rotations/utils";
 
 const toDateString = (date: Date) => {
   return date.toISOString().slice(0, 10);
@@ -61,6 +60,7 @@ export const getAppData = async () => {
     lastName: member.lastName,
     displayName: member.displayName,
     email: member.email,
+    username: member.username,
     active: member.active,
     role: member.role,
   }));
