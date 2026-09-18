@@ -14,10 +14,13 @@ export default async function AdminRotationsPage() {
     teamMembers,
     absences,
     substitutions,
+
     dispatcherConfig,
     deploymentConfig,
+
     dispatcherRotations,
     deploymentRotations,
+
     deploymentExceptions,
   } = await getAppData();
 
@@ -67,6 +70,7 @@ export default async function AdminRotationsPage() {
         <DeploymentExceptionForm
           teamMembers={teamMembers}
           exceptions={deploymentExceptions}
+          deploymentRotations={deploymentRotations}
         />
 
         <RotationHistory

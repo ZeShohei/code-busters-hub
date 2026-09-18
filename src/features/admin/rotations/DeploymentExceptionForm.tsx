@@ -7,8 +7,11 @@ import { useRouter } from "next/navigation";
 import type {
   DeploymentException,
   DeploymentExceptionType,
+  RotationAssignment,
   TeamMember,
 } from "@/types/team";
+
+import { formatDate, getDateRangeStatus } from "@/utils/date";
 
 import {
   createDeploymentException,
@@ -20,11 +23,13 @@ import styles from "./DeploymentExceptionForm.module.css";
 interface DeploymentExceptionFormProps {
   teamMembers: TeamMember[];
   exceptions: DeploymentException[];
+  deploymentRotations: RotationAssignment[];
 }
 
 export const DeploymentExceptionForm = ({
   teamMembers,
   exceptions,
+  deploymentRotations,
 }: DeploymentExceptionFormProps) => {
   const router = useRouter();
 
@@ -48,6 +53,25 @@ export const DeploymentExceptionForm = ({
 
   const [deletingId, setDeletingId] = useState<string>();
 
+  /*
+   * Nur echte, reguläre und noch nicht vergangene
+   * Deployment-Termine dürfen verschoben werden.
+   *
+   * Bereits verschobene Termine haben durch appData
+   * deploymentKind === "rescheduled" und fallen hier
+   * automatisch heraus.
+   *
+   * Sonderdeployments werden ebenfalls ausgeschlossen.
+   */
+  const availableRegularDeployments = deploymentRotations
+    .filter(
+      (rotation) =>
+        rotation.type === "deployment" &&
+        rotation.deploymentKind === "regular" &&
+        getDateRangeStatus(rotation.startDate, rotation.endDate) !== "past",
+    )
+    .sort((first, second) => first.startDate.localeCompare(second.startDate));
+
   const getTeamMemberName = (id: string | null) => {
     if (!id) {
       return "Reguläre Zuständigkeit";
@@ -56,6 +80,39 @@ export const DeploymentExceptionForm = ({
     return (
       teamMembers.find((member) => member.id === id)?.displayName ?? "Unbekannt"
     );
+  };
+
+  const getRegularDeploymentTeamMemberName = (rotation: RotationAssignment) => {
+    return getTeamMemberName(rotation.teamMemberId);
+  };
+
+  const handleTypeChange = (nextType: DeploymentExceptionType) => {
+    setType(nextType);
+
+    setOriginalDate("");
+    setDeploymentDate("");
+    setTeamMemberId("");
+    setReason("");
+
+    setError(undefined);
+    setSuccess(undefined);
+  };
+
+  const handleOriginalDeploymentChange = (value: string) => {
+    setOriginalDate(value);
+
+    /*
+     * Bei Auswahl eines anderen regulären Deployments
+     * wird eine eventuell manuell gewählte Person wieder
+     * zurückgesetzt.
+     *
+     * Standardmäßig bleibt damit die Person des regulären
+     * Deployments verantwortlich.
+     */
+    setTeamMemberId("");
+
+    setError(undefined);
+    setSuccess(undefined);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -151,12 +208,9 @@ export const DeploymentExceptionForm = ({
           <select
             id="deployment-exception-type"
             value={type}
-            onChange={(event) => {
-              setType(event.target.value as DeploymentExceptionType);
-
-              setError(undefined);
-              setSuccess(undefined);
-            }}
+            onChange={(event) =>
+              handleTypeChange(event.target.value as DeploymentExceptionType)
+            }
           >
             <option value="rescheduled">
               Reguläres Deployment verschieben
@@ -170,16 +224,34 @@ export const DeploymentExceptionForm = ({
           {type === "rescheduled" ? (
             <div className={styles.field}>
               <label htmlFor="original-deployment-date">
-                Ursprünglicher Donnerstag
+                Reguläres Deployment
               </label>
 
-              <input
+              <select
                 id="original-deployment-date"
-                type="date"
                 required
                 value={originalDate}
-                onChange={(event) => setOriginalDate(event.target.value)}
-              />
+                onChange={(event) =>
+                  handleOriginalDeploymentChange(event.target.value)
+                }
+              >
+                <option value="">Bitte Deployment auswählen</option>
+
+                {availableRegularDeployments.map((rotation) => (
+                  <option key={rotation.id} value={rotation.startDate}>
+                    {formatDate(rotation.startDate)}
+                    {" – "}
+                    {getRegularDeploymentTeamMemberName(rotation)}
+                  </option>
+                ))}
+              </select>
+
+              {availableRegularDeployments.length === 0 ? (
+                <span>
+                  Aktuell gibt es keine kommenden regulären Deployments, die
+                  verschoben werden können.
+                </span>
+              ) : null}
             </div>
           ) : null}
 
@@ -193,7 +265,12 @@ export const DeploymentExceptionForm = ({
               type="date"
               required
               value={deploymentDate}
-              onChange={(event) => setDeploymentDate(event.target.value)}
+              onChange={(event) => {
+                setDeploymentDate(event.target.value);
+
+                setError(undefined);
+                setSuccess(undefined);
+              }}
             />
           </div>
 
@@ -204,7 +281,12 @@ export const DeploymentExceptionForm = ({
               id="deployment-team-member"
               required={type === "special"}
               value={teamMemberId}
-              onChange={(event) => setTeamMemberId(event.target.value)}
+              onChange={(event) => {
+                setTeamMemberId(event.target.value);
+
+                setError(undefined);
+                setSuccess(undefined);
+              }}
             >
               <option value="">
                 {type === "rescheduled"
@@ -228,7 +310,12 @@ export const DeploymentExceptionForm = ({
             id="deployment-exception-reason"
             rows={3}
             value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            onChange={(event) => {
+              setReason(event.target.value);
+
+              setError(undefined);
+              setSuccess(undefined);
+            }}
             placeholder="Optional, z. B. Feiertag, Hotfix oder Sonderrelease"
           />
         </div>
@@ -246,7 +333,14 @@ export const DeploymentExceptionForm = ({
         ) : null}
 
         <div className={styles.actions}>
-          <button type="submit" disabled={isSaving}>
+          <button
+            type="submit"
+            disabled={
+              isSaving ||
+              (type === "rescheduled" &&
+                availableRegularDeployments.length === 0)
+            }
+          >
             {isSaving
               ? "Speichern..."
               : type === "rescheduled"
@@ -273,8 +367,10 @@ export const DeploymentExceptionForm = ({
 
                 <span>
                   {exception.type === "rescheduled" && exception.originalDate
-                    ? `${exception.originalDate} → ${exception.deploymentDate}`
-                    : exception.deploymentDate}
+                    ? `${formatDate(exception.originalDate)} → ${formatDate(
+                        exception.deploymentDate,
+                      )}`
+                    : formatDate(exception.deploymentDate)}
                 </span>
 
                 <span>

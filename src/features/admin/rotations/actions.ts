@@ -3,9 +3,16 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/features/admin/requireAdmin";
+import { generateRotations } from "@/features/rotations/utils";
+
 import { prisma } from "@/lib/prisma";
 
-import type { DeploymentExceptionType, RotationAssignment } from "@/types/team";
+import type {
+  DeploymentExceptionType,
+  RotationAssignment,
+  RotationConfig,
+  TeamMember,
+} from "@/types/team";
 
 interface SaveRotationConfigInput {
   type: RotationAssignment["type"];
@@ -36,6 +43,10 @@ const toDatabaseDate = (value: string) => {
   return new Date(`${value}T00:00:00.000Z`);
 };
 
+const toDateString = (date: Date) => {
+  return date.toISOString().slice(0, 10);
+};
+
 const normalizeOptionalValue = (value?: string) => {
   const normalized = value?.trim();
 
@@ -48,6 +59,87 @@ const revalidateRotationPages = () => {
   revalidatePath("/rotations");
   revalidatePath("/admin");
   revalidatePath("/admin/rotations");
+};
+
+const getRegularDeploymentRotations = async () => {
+  const [teamMemberRows, configRows] = await Promise.all([
+    prisma.teamMember.findMany({
+      orderBy: {
+        displayName: "asc",
+      },
+    }),
+
+    prisma.rotationConfig.findMany({
+      where: {
+        type: "deployment",
+      },
+
+      include: {
+        participants: {
+          orderBy: {
+            position: "asc",
+          },
+        },
+      },
+
+      orderBy: {
+        startDate: "asc",
+      },
+    }),
+  ]);
+
+  const teamMembers: TeamMember[] = teamMemberRows.map((member) => ({
+    id: member.id,
+    firstName: member.firstName,
+    lastName: member.lastName,
+    displayName: member.displayName,
+    email: member.email,
+    username: member.username,
+    active: member.active,
+    role: member.role,
+  }));
+
+  const configs: RotationConfig[] = configRows.map((config) => ({
+    participantTeamMemberIds: config.participants.map(
+      (participant) => participant.teamMemberId,
+    ),
+
+    startDate: toDateString(config.startDate),
+
+    numberOfWeeks: config.numberOfWeeks,
+
+    startIndex: config.startIndex,
+
+    type: "deployment",
+  }));
+
+  return configs.flatMap((config, index) => {
+    const nextConfig = configs[index + 1];
+
+    const participants = config.participantTeamMemberIds
+      .map((id) => teamMembers.find((member) => member.id === id))
+      .filter((member): member is TeamMember => member !== undefined);
+
+    const rotations = generateRotations({
+      teamMembers: participants,
+
+      startDate: config.startDate,
+
+      numberOfWeeks: config.numberOfWeeks,
+
+      type: "deployment",
+
+      startIndex: config.startIndex,
+    });
+
+    if (!nextConfig) {
+      return rotations;
+    }
+
+    return rotations.filter(
+      (rotation) => rotation.startDate < nextConfig.startDate,
+    );
+  });
 };
 
 export const updateRotationConfig = async (
@@ -181,11 +273,14 @@ export const createDeploymentException = async (
     };
   }
 
+  /*
+   * Reguläres Deployment verschieben
+   */
   if (input.type === "rescheduled") {
     if (!input.originalDate) {
       return {
         success: false,
-        error: "Bitte den ursprünglichen Deployment-Termin auswählen.",
+        error: "Bitte ein reguläres Deployment auswählen.",
       };
     }
 
@@ -193,6 +288,27 @@ export const createDeploymentException = async (
       return {
         success: false,
         error: "Der neue Termin muss vom ursprünglichen Termin abweichen.",
+      };
+    }
+
+    /*
+     * Nicht nur dem Frontend vertrauen.
+     *
+     * originalDate muss tatsächlich ein
+     * regulär generierter Deployment-Termin
+     * aus unserer Rotation sein.
+     */
+    const regularDeployments = await getRegularDeploymentRotations();
+
+    const regularDeployment = regularDeployments.find(
+      (rotation) => rotation.startDate === input.originalDate,
+    );
+
+    if (!regularDeployment) {
+      return {
+        success: false,
+        error:
+          "Der ausgewählte ursprüngliche Termin ist kein regulärer Deployment-Termin.",
       };
     }
 
@@ -206,11 +322,15 @@ export const createDeploymentException = async (
       return {
         success: false,
         error:
-          "Für diesen regulären Deployment-Termin existiert bereits eine Verschiebung.",
+          "Für dieses reguläre Deployment existiert bereits eine Verschiebung.",
       };
     }
   }
 
+  /*
+   * Ein Sonderdeployment benötigt immer
+   * eine explizit zuständige Person.
+   */
   if (input.type === "special" && !input.teamMemberId) {
     return {
       success: false,
@@ -219,6 +339,11 @@ export const createDeploymentException = async (
     };
   }
 
+  /*
+   * Falls eine Person explizit angegeben
+   * wurde, muss diese existieren und aktiv
+   * sein.
+   */
   if (input.teamMemberId) {
     const teamMember = await prisma.teamMember.findFirst({
       where: {
