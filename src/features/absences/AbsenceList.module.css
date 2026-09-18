@@ -136,7 +136,7 @@
     background:
             var(--color-brand-primary);
 
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }
 
 .activeFilter:hover {
@@ -146,7 +146,7 @@
     background:
             var(--color-brand-primary-hover);
 
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }
 
 .filter:focus-visible,

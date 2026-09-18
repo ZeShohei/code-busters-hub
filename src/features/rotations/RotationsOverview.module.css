@@ -7,8 +7,8 @@
 .filterGroups {
     display: flex;
     align-items: flex-end;
-    gap: 2rem;
     flex-wrap: wrap;
+    gap: 2rem;
 }
 
 .filterGroup {
@@ -18,7 +18,8 @@
 }
 
 .filterLabel {
-    color: #666;
+    color: var(--color-text-secondary);
+
     font-size: 0.75rem;
     font-weight: 600;
 }
@@ -35,39 +36,55 @@
 
     padding: 0.5rem 0.875rem;
 
-    border: 1px solid #d4d4d4;
-    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
 
     font: inherit;
     font-size: 0.8125rem;
     font-weight: 600;
 
     cursor: pointer;
+
+    transition:
+            background 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease;
 }
 
 .filter {
-    color: #404040;
-    background: #fff;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
 }
 
 .filter:hover {
-    background: #f5f5f5;
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-background-primary-subtle);
+    color: var(--color-text-brand);
 }
 
 .activeFilter {
-    color: #fff;
-    border-color: #171717;
-    background: #171717;
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-brand-primary);
+    color: var(--color-text-on-brand);
+}
+
+.activeFilter:hover {
+    border-color: var(--color-brand-primary-hover);
+
+    background: var(--color-brand-primary-hover);
 }
 
 .filter:focus-visible,
 .activeFilter:focus-visible {
-    outline: 0.125rem solid #2563eb;
+    outline: 0.1875rem solid var(--color-focus);
     outline-offset: 0.125rem;
 }
 
 .resultCount {
-    color: #666;
+    color: var(--color-text-secondary);
+
     font-size: 0.8125rem;
 }
 
@@ -78,7 +95,8 @@
 }
 
 .empty {
-    color: #888;
+    color: var(--color-text-muted);
+
     font-size: 0.875rem;
 }
 

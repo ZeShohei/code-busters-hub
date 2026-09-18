@@ -115,7 +115,7 @@
     background:
             var(--color-brand-primary);
 
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 
     font: inherit;
     font-weight: 700;

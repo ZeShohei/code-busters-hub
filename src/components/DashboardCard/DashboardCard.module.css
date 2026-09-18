@@ -7,37 +7,59 @@
 
     padding: 1.5rem;
 
-    border: 1px solid #e5e5e5;
-    border-radius: 0.75rem;
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
 
-    background: #fff;
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    box-shadow: var(--shadow-sm);
+
+    transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease,
+            transform 0.15s ease;
+}
+
+.card:hover {
+    transform: translateY(-0.0625rem);
+
+    border-color: var(--color-border-default);
+
+    box-shadow: var(--shadow-md);
 }
 
 .warningCard {
-    border-color: #f59e0b;
-    background: #fffbeb;
+    border-color: var(--color-text-warning);
+
+    background: var(--color-background-warning);
 }
 
 .label {
-    color: #666;
+    color: var(--color-text-secondary);
+
     font-size: 0.75rem;
     font-weight: 600;
 }
 
 .value {
+    color: var(--color-text-primary);
+
     font-size: 1.5rem;
     line-height: 1.2;
 }
 
 .description {
-    color: #666;
+    color: var(--color-text-secondary);
+
     font-size: 0.875rem;
     line-height: 1.5;
 }
 
 .warning {
-    color: #b45309;
+    color: var(--color-text-warning);
+
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.5;
 }

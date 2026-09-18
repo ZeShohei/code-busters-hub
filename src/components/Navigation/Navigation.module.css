@@ -62,14 +62,14 @@
     background:
             var(--color-navigation-active);
 
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }
 
 .activeLink:hover {
     background:
             var(--color-brand-primary-hover);
 
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }
 
 @media (max-width: 48rem) {

@@ -104,7 +104,7 @@
     border: 0.0625rem solid var(--color-brand-primary);
 
     background: var(--color-brand-primary);
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }
 
 .primaryButton:hover:not(:disabled) {

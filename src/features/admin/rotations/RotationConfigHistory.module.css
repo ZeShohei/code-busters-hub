@@ -6,10 +6,14 @@
 
 .header h3 {
     margin: 0;
+
+    color: var(--color-text-primary);
 }
 
 .header p {
     margin: 0.5rem 0 0;
+
+    color: var(--color-text-secondary);
 }
 
 .list {
@@ -22,10 +26,16 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+
     padding: 1rem;
-    border: 1px solid #d9d9d9;
-    border-radius: 0.75rem;
-    background: #ffffff;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    box-shadow: var(--shadow-sm);
 }
 
 .itemHeader {
@@ -42,24 +52,32 @@
 }
 
 .label {
+    color: var(--color-text-secondary);
+
     font-size: 0.75rem;
-    color: #667085;
 }
 
 .latest {
+    width: fit-content;
+
     padding: 0.25rem 0.5rem;
-    border-radius: 999rem;
-    background: #ecfdf3;
-    color: #027a48;
+
+    border-radius: var(--radius-round);
+
+    background: var(--color-background-success);
+    color: var(--color-text-success);
+
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .details {
     display: grid;
     grid-template-columns:
     repeat(3, minmax(0, 1fr));
+
     gap: 1rem;
+
     margin: 0;
 }
 
@@ -70,12 +88,15 @@
 }
 
 .details dt {
-    color: #667085;
+    color: var(--color-text-secondary);
+
     font-size: 0.75rem;
 }
 
 .details dd {
     margin: 0;
+
+    color: var(--color-text-primary);
 }
 
 @media (max-width: 50rem) {

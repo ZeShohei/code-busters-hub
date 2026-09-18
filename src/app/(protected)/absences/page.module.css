@@ -16,23 +16,39 @@
 
     padding: 0.75rem 1rem;
 
-    border: 1px solid #111111;
-    border-radius: 0.5rem;
+    border: 0.0625rem solid var(--color-brand-primary);
+    border-radius: var(--radius-md);
 
-    background: #111111;
-    color: #ffffff;
+    background: var(--color-brand-primary);
+    color: var(--color-text-on-brand);
 
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
+
     text-decoration: none;
+
+    transition:
+            background 0.15s ease,
+            border-color 0.15s ease,
+            transform 0.1s ease;
 }
 
 .createButton:hover {
-    background: #292929;
+    border-color: var(--color-brand-primary-hover);
+
+    background: var(--color-brand-primary-hover);
+}
+
+.createButton:active {
+    transform: translateY(0.0625rem);
+
+    border-color: var(--color-brand-primary-active);
+
+    background: var(--color-brand-primary-active);
 }
 
 .createButton:focus-visible {
-    outline: 0.125rem solid #111111;
+    outline: 0.1875rem solid var(--color-focus);
     outline-offset: 0.125rem;
 }
 

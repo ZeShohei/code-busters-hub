@@ -49,5 +49,5 @@
     border-color:
             var(--color-navigation-active);
 
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }

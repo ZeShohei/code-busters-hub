@@ -118,7 +118,7 @@
     border-color: var(--color-brand-primary);
 
     background: var(--color-brand-primary);
-    color: #ffffff;
+    color: var(--color-text-on-brand);
 }
 
 .activeFilter:hover {
