@@ -1,5 +1,6 @@
 import type { RotationConfig, TeamMember } from "@/types/team";
-import { formatDate } from "@/utils/date";
+
+import { formatDate, parseDate } from "@/utils/date";
 
 import styles from "./RotationConfigHistory.module.css";
 
@@ -7,6 +8,26 @@ interface RotationConfigHistoryProps {
   configs: RotationConfig[];
   teamMembers: TeamMember[];
 }
+
+const getThursdayOnOrAfter = (dateString: string) => {
+  const date = parseDate(dateString);
+
+  const currentDay = date.getDay();
+
+  const thursday = 4;
+
+  const daysUntilThursday = (thursday - currentDay + 7) % 7;
+
+  date.setDate(date.getDate() + daysUntilThursday);
+
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 export const RotationConfigHistory = ({
   configs,
@@ -41,6 +62,12 @@ export const RotationConfigHistory = ({
           {sortedConfigs.map((config, index) => {
             const startMemberId =
               config.participantTeamMemberIds[config.startIndex];
+
+            const isDeployment = config.type === "deployment";
+
+            const firstDeploymentDate = isDeployment
+              ? getThursdayOnOrAfter(config.startDate)
+              : undefined;
 
             return (
               <article
@@ -79,10 +106,31 @@ export const RotationConfigHistory = ({
                   </div>
 
                   <div>
-                    <dt>Generierte Wochen</dt>
+                    <dt>
+                      {isDeployment ? "Planungszeitraum" : "Generierte Wochen"}
+                    </dt>
 
-                    <dd>{config.numberOfWeeks}</dd>
+                    <dd>
+                      {config.numberOfWeeks}{" "}
+                      {config.numberOfWeeks === 1 ? "Woche" : "Wochen"}
+                    </dd>
                   </div>
+
+                  {isDeployment && firstDeploymentDate ? (
+                    <div>
+                      <dt>Erster regulärer Deployment-Termin</dt>
+
+                      <dd>{formatDate(firstDeploymentDate)}</dd>
+                    </div>
+                  ) : null}
+
+                  {isDeployment ? (
+                    <div>
+                      <dt>Rhythmus</dt>
+
+                      <dd>Donnerstag, alle 14 Tage</dd>
+                    </div>
+                  ) : null}
                 </dl>
               </article>
             );
@@ -92,3 +140,5 @@ export const RotationConfigHistory = ({
     </section>
   );
 };
+
+RotationConfigHistory.displayName = "RotationConfigHistory";

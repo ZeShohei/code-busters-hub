@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import type { RotationConfig, TeamMember } from "@/types/team";
+
+import { formatDate, parseDate } from "@/utils/date";
 
 import { updateRotationConfig } from "./actions";
 
@@ -14,6 +16,32 @@ interface AdminRotationFormProps {
   config: RotationConfig;
   teamMembers: TeamMember[];
 }
+
+const getThursdayOnOrAfter = (dateString: string) => {
+  const date = parseDate(dateString);
+
+  const currentDay = date.getDay();
+
+  const thursday = 4;
+
+  const daysUntilThursday = (thursday - currentDay + 7) % 7;
+
+  date.setDate(date.getDate() + daysUntilThursday);
+
+  const year = date.getFullYear();
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getWeekdayLabel = (dateString: string) => {
+  return new Intl.DateTimeFormat("de-AT", {
+    weekday: "long",
+  }).format(parseDate(dateString));
+};
 
 export const AdminRotationForm = ({
   title,
@@ -50,6 +78,14 @@ export const AdminRotationForm = ({
   const [isSaving, setIsSaving] = useState(false);
 
   const isDeployment = config.type === "deployment";
+
+  const firstDeploymentDate = useMemo(() => {
+    if (!isDeployment || !startDate) {
+      return undefined;
+    }
+
+    return getThursdayOnOrAfter(startDate);
+  }, [isDeployment, startDate]);
 
   const getTeamMember = (id: string) => {
     return activeTeamMembers.find((member) => member.id === id);
@@ -137,7 +173,7 @@ export const AdminRotationForm = ({
 
           <p>
             {isDeployment
-              ? "Deployments werden automatisch alle zwei Wochen an einem Donnerstag erzeugt. Änderungen gelten ab dem gewählten Datum."
+              ? "Teilnehmer und Reihenfolge der zweiwöchigen Deployment-Rotation verwalten."
               : "Teilnehmer und Reihenfolge dieser Rotation verwalten. Änderungen gelten ab dem gewählten Datum."}
           </p>
         </div>
@@ -146,13 +182,13 @@ export const AdminRotationForm = ({
       <div className={styles.info}>
         <strong>
           {isDeployment
-            ? "Zweiwöchige Deployment-Rotation"
+            ? "Deployment alle zwei Wochen"
             : "Versionierte Rotation"}
         </strong>
 
         <p>
           {isDeployment
-            ? "Der erste Deployment-Termin ist der erste Donnerstag ab dem gewählten Startdatum. Danach wird alle 14 Tage die nächste Person eingeteilt. Verschiebungen und Sonderdeployments werden separat verwaltet."
+            ? "Reguläre Deployments finden alle zwei Wochen am Donnerstag statt. Das gewählte Datum definiert, ab wann diese Konfiguration gültig ist. Der tatsächliche erste Deployment-Termin wird automatisch auf den nächsten Donnerstag gelegt."
             : "Beim Speichern wird die bestehende Historie nicht überschrieben. Die neue Konfiguration gilt erst ab dem angegebenen Datum."}
         </p>
       </div>
@@ -178,7 +214,7 @@ export const AdminRotationForm = ({
 
         <div className={styles.field}>
           <label htmlFor={`${config.type}-weeks`}>
-            Planungszeitraum in Wochen
+            {isDeployment ? "Planungszeitraum in Wochen" : "Anzahl Wochen"}
           </label>
 
           <input
@@ -197,6 +233,18 @@ export const AdminRotationForm = ({
           />
         </div>
       </div>
+
+      {isDeployment && firstDeploymentDate ? (
+        <div className={styles.info}>
+          <strong>Erster regulärer Deployment-Termin</strong>
+
+          <p>
+            {getWeekdayLabel(firstDeploymentDate)},{" "}
+            {formatDate(firstDeploymentDate)}. Danach folgen die regulären
+            Deployments jeweils im Abstand von 14 Tagen.
+          </p>
+        </div>
+      ) : null}
 
       <fieldset className={styles.fieldset}>
         <legend>Teilnehmer</legend>
@@ -320,3 +368,5 @@ export const AdminRotationForm = ({
     </form>
   );
 };
+
+AdminRotationForm.displayName = "AdminRotationForm";
