@@ -5,9 +5,14 @@ import { PageHeader } from "@/components/PageHeader/PageHeader";
 
 import { getAppData } from "@/data/appData";
 
+import { resolveRotation } from "@/features/rotations/utils";
 import { getTeamMemberName } from "@/features/team/utils";
 
-import type { Absence, RotationAssignment } from "@/types/team";
+import type {
+  Absence,
+  RotationAssignment,
+  RotationResolution,
+} from "@/types/team";
 
 import {
   formatDate,
@@ -26,32 +31,37 @@ interface TeamMemberPageProps {
   }>;
 }
 
-const sortRotationsByStartDate = (rotations: RotationAssignment[]) => {
+interface ResolvedRotationItem {
+  rotation: RotationAssignment;
+  resolution: RotationResolution;
+}
+
+const sortRotationsByStartDate = (rotations: ResolvedRotationItem[]) => {
   return [...rotations].sort(
     (first, second) =>
-      parseDate(first.startDate).getTime() -
-      parseDate(second.startDate).getTime(),
+      parseDate(first.rotation.startDate).getTime() -
+      parseDate(second.rotation.startDate).getTime(),
   );
 };
 
-const getRelevantRotations = (rotations: RotationAssignment[]) => {
+const getRelevantRotations = (rotations: ResolvedRotationItem[]) => {
   const sorted = sortRotationsByStartDate(rotations);
 
   const current = sorted.filter(
-    (rotation) =>
+    ({ rotation }) =>
       getDateRangeStatus(rotation.startDate, rotation.endDate) === "current",
   );
 
   const upcoming = sorted
     .filter(
-      (rotation) =>
+      ({ rotation }) =>
         getDateRangeStatus(rotation.startDate, rotation.endDate) === "upcoming",
     )
     .slice(0, 3);
 
   const past = sorted
     .filter(
-      (rotation) =>
+      ({ rotation }) =>
         getDateRangeStatus(rotation.startDate, rotation.endDate) === "past",
     )
     .slice(-3)
@@ -68,9 +78,37 @@ const sortAbsencesByStartDate = (absences: Absence[]) => {
   );
 };
 
+const getAbsenceTypeLabel = (absence: Absence) => {
+  switch (absence.type) {
+    case "vacation":
+      return "Urlaub";
+
+    case "sickLeave":
+      return "Krankenstand";
+
+    default:
+      return "Abwesend";
+  }
+};
+
+const getDeploymentKindLabel = (rotation: RotationAssignment) => {
+  switch (rotation.deploymentKind) {
+    case "special":
+      return "Sonderdeployment";
+
+    case "rescheduled":
+      return "Verschobenes Deployment";
+
+    default:
+      return "Reguläres Deployment";
+  }
+};
+
 const renderRotationList = (
-  rotations: RotationAssignment[],
+  rotations: ResolvedRotationItem[],
   emptyText: string,
+  teamMemberId: string,
+  teamMembers: Parameters<typeof getTeamMemberName>[1],
 ) => {
   if (rotations.length === 0) {
     return <p className={styles.empty}>{emptyText}</p>;
@@ -78,8 +116,20 @@ const renderRotationList = (
 
   return (
     <div className={styles.list}>
-      {rotations.map((rotation) => {
+      {rotations.map(({ rotation, resolution }) => {
         const status = getDateRangeStatus(rotation.startDate, rotation.endDate);
+
+        const isDeployment = rotation.type === "deployment";
+
+        const isSubstitute =
+          resolution.status === "substitution" &&
+          resolution.effectiveTeamMemberId === teamMemberId &&
+          resolution.assignedTeamMemberId !== teamMemberId;
+
+        const isBeingSubstituted =
+          resolution.status === "substitution" &&
+          resolution.assignedTeamMemberId === teamMemberId &&
+          resolution.effectiveTeamMemberId !== teamMemberId;
 
         return (
           <article key={rotation.id} className={styles.card}>
@@ -90,13 +140,32 @@ const renderRotationList = (
             </div>
 
             <div>
-              <span>Zeitraum</span>
+              <span>{isDeployment ? "Termin" : "Zeitraum"}</span>
 
               <strong>
-                {formatDate(rotation.startDate)} –{" "}
-                {formatDate(rotation.endDate)}
+                {isDeployment
+                  ? formatDate(rotation.startDate)
+                  : `${formatDate(rotation.startDate)} – ${formatDate(
+                      rotation.endDate,
+                    )}`}
               </strong>
+
+              {isDeployment &&
+              rotation.deploymentKind === "rescheduled" &&
+              rotation.originalDate ? (
+                <small>Ursprünglich: {formatDate(rotation.originalDate)}</small>
+              ) : null}
             </div>
+
+            {isDeployment ? (
+              <div>
+                <span>Art</span>
+
+                <strong>{getDeploymentKindLabel(rotation)}</strong>
+
+                {rotation.reason ? <small>{rotation.reason}</small> : null}
+              </div>
+            ) : null}
 
             <div>
               <span>Status</span>
@@ -113,6 +182,33 @@ const renderRotationList = (
                 {getDateRangeStatusLabel(status)}
               </strong>
             </div>
+
+            {isSubstitute ? (
+              <div>
+                <span>Vertretung</span>
+
+                <strong>
+                  Vertritt{" "}
+                  {getTeamMemberName(
+                    resolution.assignedTeamMemberId,
+                    teamMembers,
+                  )}
+                </strong>
+              </div>
+            ) : null}
+
+            {isBeingSubstituted ? (
+              <div>
+                <span>Vertreten durch</span>
+
+                <strong>
+                  {getTeamMemberName(
+                    resolution.effectiveTeamMemberId,
+                    teamMembers,
+                  )}
+                </strong>
+              </div>
+            ) : null}
           </article>
         );
       })}
@@ -145,31 +241,70 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
     isDateInRange(absence.startDate, absence.endDate),
   );
 
+  const nextAbsence = memberAbsences.find(
+    (absence) =>
+      getDateRangeStatus(absence.startDate, absence.endDate) === "upcoming",
+  );
+
+  /*
+   * Rotationen werden nicht nur anhand
+   * der ursprünglich eingeteilten Person
+   * ermittelt.
+   *
+   * Dadurch erscheinen auch Rotationen,
+   * bei denen dieses Teammitglied als
+   * Vertretung einspringt.
+   */
+  const resolvedDispatcherRotations = dispatcherRotations.map((rotation) => ({
+    rotation,
+
+    resolution: resolveRotation(rotation, absences, substitutions),
+  }));
+
+  const resolvedDeploymentRotations = deploymentRotations.map((rotation) => ({
+    rotation,
+
+    resolution: resolveRotation(rotation, absences, substitutions),
+  }));
+
   const memberDispatcherRotations = getRelevantRotations(
-    dispatcherRotations.filter(
-      (rotation) => rotation.teamMemberId === teamMember.id,
+    resolvedDispatcherRotations.filter(
+      ({ resolution }) =>
+        resolution.assignedTeamMemberId === teamMember.id ||
+        resolution.effectiveTeamMemberId === teamMember.id,
     ),
   );
 
   const memberDeploymentRotations = getRelevantRotations(
-    deploymentRotations.filter(
-      (rotation) => rotation.teamMemberId === teamMember.id,
+    resolvedDeploymentRotations.filter(
+      ({ resolution }) =>
+        resolution.assignedTeamMemberId === teamMember.id ||
+        resolution.effectiveTeamMemberId === teamMember.id,
     ),
   );
 
-  /*
-   * Hier sind die Convenience-Daten sinnvoll:
-   * Wir suchen alle Vertretungen für Abwesenheiten
-   * dieses Teammitglieds.
-   */
+  const nextDispatcher = sortRotationsByStartDate(
+    resolvedDispatcherRotations.filter(
+      ({ rotation, resolution }) =>
+        (resolution.assignedTeamMemberId === teamMember.id ||
+          resolution.effectiveTeamMemberId === teamMember.id) &&
+        getDateRangeStatus(rotation.startDate, rotation.endDate) !== "past",
+    ),
+  )[0];
+
+  const nextDeployment = sortRotationsByStartDate(
+    resolvedDeploymentRotations.filter(
+      ({ rotation, resolution }) =>
+        (resolution.assignedTeamMemberId === teamMember.id ||
+          resolution.effectiveTeamMemberId === teamMember.id) &&
+        getDateRangeStatus(rotation.startDate, rotation.endDate) !== "past",
+    ),
+  )[0];
+
   const substitutionsForMember = substitutions.filter(
     (substitution) => substitution.teamMemberId === teamMember.id,
   );
 
-  /*
-   * Alle Vertretungen, die dieses Teammitglied
-   * selbst übernimmt.
-   */
   const substitutionsByMember = substitutions.filter(
     (substitution) => substitution.substituteTeamMemberId === teamMember.id,
   );
@@ -205,11 +340,7 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
 
             {currentAbsence ? (
               <strong className={styles.statusAbsent}>
-                {currentAbsence.type === "vacation"
-                  ? "Urlaub"
-                  : currentAbsence.type === "sickLeave"
-                    ? "Krankenstand"
-                    : "Abwesend"}
+                {getAbsenceTypeLabel(currentAbsence)}
               </strong>
             ) : (
               <strong className={styles.statusAvailable}>Verfügbar</strong>
@@ -217,6 +348,58 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
           </div>
         </div>
       </PageHeader>
+
+      <section className={styles.summaryGrid} aria-label="Übersicht">
+        <article className={styles.summaryCard}>
+          <span>Nächste Abwesenheit</span>
+
+          {nextAbsence ? (
+            <>
+              <strong>{getAbsenceTypeLabel(nextAbsence)}</strong>
+
+              <small>
+                {formatDate(nextAbsence.startDate)} –{" "}
+                {formatDate(nextAbsence.endDate)}
+              </small>
+            </>
+          ) : (
+            <strong>Keine geplant</strong>
+          )}
+        </article>
+
+        <article className={styles.summaryCard}>
+          <span>Nächster Dispatcher</span>
+
+          {nextDispatcher ? (
+            <>
+              <strong>
+                KW {getCalendarWeek(nextDispatcher.rotation.startDate)}
+              </strong>
+
+              <small>
+                {formatDate(nextDispatcher.rotation.startDate)} –{" "}
+                {formatDate(nextDispatcher.rotation.endDate)}
+              </small>
+            </>
+          ) : (
+            <strong>Nicht geplant</strong>
+          )}
+        </article>
+
+        <article className={styles.summaryCard}>
+          <span>Nächstes Deployment</span>
+
+          {nextDeployment ? (
+            <>
+              <strong>{formatDate(nextDeployment.rotation.startDate)}</strong>
+
+              <small>{getDeploymentKindLabel(nextDeployment.rotation)}</small>
+            </>
+          ) : (
+            <strong>Nicht geplant</strong>
+          )}
+        </article>
+      </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHeading}>
@@ -240,12 +423,6 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
                 absence.endDate,
               );
 
-              /*
-               * Eine konkrete Abwesenheit hat
-               * höchstens eine Substitution.
-               * Deshalb ausschließlich über
-               * absenceId zuordnen.
-               */
               const substitution = substitutions.find(
                 (item) => item.absenceId === absence.id,
               );
@@ -255,13 +432,7 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
                   <div>
                     <span>Typ</span>
 
-                    <strong>
-                      {absence.type === "vacation"
-                        ? "Urlaub"
-                        : absence.type === "sickLeave"
-                          ? "Krankenstand"
-                          : "Abwesend"}
-                    </strong>
+                    <strong>{getAbsenceTypeLabel(absence)}</strong>
                   </div>
 
                   <div>
@@ -313,13 +484,18 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
           <div>
             <h2>Dispatcher-Rotationen</h2>
 
-            <p>Aktuelle sowie die nächsten und letzten Rotationen.</p>
+            <p>
+              Eigene Einsätze und Rotationen, bei denen die Person als
+              Vertretung übernimmt.
+            </p>
           </div>
         </div>
 
         {renderRotationList(
           memberDispatcherRotations,
           "Keine Dispatcher-Rotationen.",
+          teamMember.id,
+          teamMembers,
         )}
       </section>
 
@@ -328,13 +504,18 @@ export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
           <div>
             <h2>Deployment-Rotationen</h2>
 
-            <p>Aktuelle sowie die nächsten und letzten Rotationen.</p>
+            <p>
+              Reguläre, verschobene und Sonderdeployments inklusive
+              Vertretungen.
+            </p>
           </div>
         </div>
 
         {renderRotationList(
           memberDeploymentRotations,
           "Keine Deployment-Rotationen.",
+          teamMember.id,
+          teamMembers,
         )}
       </section>
 

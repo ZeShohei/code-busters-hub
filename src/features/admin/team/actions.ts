@@ -23,6 +23,8 @@ interface ActionResult {
   error?: string;
 }
 
+type RotationType = "dispatcher" | "deployment";
+
 const normalizeInput = (input: SaveTeamMemberInput) => {
   return {
     firstName: input.firstName.trim(),
@@ -101,6 +103,143 @@ const getActiveAdminCount = async () => {
   });
 };
 
+const addWeeks = (date: Date, numberOfWeeks: number) => {
+  const result = new Date(date);
+
+  result.setUTCDate(result.getUTCDate() + numberOfWeeks * 7);
+
+  return result;
+};
+
+/*
+ * Prüft, ob ein Teammitglied noch in einer
+ * aktuell wirksamen oder zukünftigen
+ * Rotationskonfiguration enthalten ist.
+ *
+ * Historische Konfigurationen werden ignoriert.
+ */
+const getRelevantRotationParticipations = async (
+  teamMemberId: string,
+): Promise<RotationType[]> => {
+  const configs = await prisma.rotationConfig.findMany({
+    include: {
+      participants: {
+        select: {
+          teamMemberId: true,
+        },
+      },
+    },
+
+    orderBy: [
+      {
+        type: "asc",
+      },
+      {
+        startDate: "asc",
+      },
+    ],
+  });
+
+  const today = new Date();
+
+  today.setUTCHours(0, 0, 0, 0);
+
+  const relevantTypes = new Set<RotationType>();
+
+  const rotationTypes: RotationType[] = ["dispatcher", "deployment"];
+
+  for (const type of rotationTypes) {
+    const typeConfigs = configs.filter((config) => config.type === type);
+
+    if (typeConfigs.length === 0) {
+      continue;
+    }
+
+    /*
+     * Aktuelle Konfiguration:
+     * die letzte Version, deren Startdatum
+     * bereits erreicht wurde.
+     */
+    const currentConfig = [...typeConfigs]
+      .reverse()
+      .find((config) => config.startDate <= today);
+
+    if (currentConfig) {
+      const plannedEnd = addWeeks(
+        currentConfig.startDate,
+        currentConfig.numberOfWeeks,
+      );
+
+      const nextConfig = typeConfigs.find(
+        (config) => config.startDate > currentConfig.startDate,
+      );
+
+      /*
+       * Eine Version endet entweder mit ihrem
+       * Planungszeitraum oder sobald eine neue
+       * Version beginnt.
+       */
+      const effectiveEnd =
+        nextConfig && nextConfig.startDate < plannedEnd
+          ? nextConfig.startDate
+          : plannedEnd;
+
+      const isStillRelevant = effectiveEnd >= today;
+
+      const containsTeamMember = currentConfig.participants.some(
+        (participant) => participant.teamMemberId === teamMemberId,
+      );
+
+      if (isStillRelevant && containsTeamMember) {
+        relevantTypes.add(type);
+      }
+    }
+
+    /*
+     * Auch bereits angelegte zukünftige
+     * Konfigurationen müssen geprüft werden.
+     */
+    const futureConfigs = typeConfigs.filter(
+      (config) => config.startDate > today,
+    );
+
+    const isInFutureConfig = futureConfigs.some((config) =>
+      config.participants.some(
+        (participant) => participant.teamMemberId === teamMemberId,
+      ),
+    );
+
+    if (isInFutureConfig) {
+      relevantTypes.add(type);
+    }
+  }
+
+  return [...relevantTypes];
+};
+
+const getRotationParticipationError = async (
+  teamMemberId: string,
+): Promise<string | undefined> => {
+  const rotationTypes = await getRelevantRotationParticipations(teamMemberId);
+
+  if (rotationTypes.length === 0) {
+    return undefined;
+  }
+
+  if (
+    rotationTypes.includes("dispatcher") &&
+    rotationTypes.includes("deployment")
+  ) {
+    return "Das Teammitglied ist noch Teilnehmer der Dispatcher- und Deployment-Rotation. Entferne es zuerst aus beiden Rotationen.";
+  }
+
+  if (rotationTypes.includes("dispatcher")) {
+    return "Das Teammitglied ist noch Teilnehmer der Dispatcher-Rotation. Entferne es zuerst aus der Rotation.";
+  }
+
+  return "Das Teammitglied ist noch Teilnehmer der Deployment-Rotation. Entferne es zuerst aus der Rotation.";
+};
+
 export const createTeamMember = async (
   input: SaveTeamMemberInput,
 ): Promise<ActionResult> => {
@@ -140,14 +279,12 @@ export const createTeamMember = async (
       if (existingUser.email === normalized.email) {
         return {
           success: false,
-
           error: "Diese E-Mail-Adresse wird bereits verwendet.",
         };
       }
 
       return {
         success: false,
-
         error: "Dieser Benutzername wird bereits verwendet.",
       };
     }
@@ -184,7 +321,6 @@ export const createTeamMember = async (
 
     return {
       success: false,
-
       error: "Das Teammitglied konnte nicht angelegt werden.",
     };
   }
@@ -208,7 +344,6 @@ export const updateTeamMember = async (
   if (id === currentUser.id && input.role !== "admin") {
     return {
       success: false,
-
       error: "Du kannst dir deine eigene Admin-Rolle nicht entziehen.",
     };
   }
@@ -231,15 +366,14 @@ export const updateTeamMember = async (
     if (!existingMember) {
       return {
         success: false,
-
         error: "Das Teammitglied wurde nicht gefunden.",
       };
     }
 
     /*
-     * Wenn ein aktiver Admin zu einem normalen
-     * Mitglied gemacht werden soll, muss mindestens
-     * ein weiterer aktiver Admin vorhanden sein.
+     * Ein aktiver Admin darf nur zum Mitglied
+     * herabgestuft werden, wenn ein weiterer
+     * aktiver Admin übrig bleibt.
      */
     if (
       existingMember.active &&
@@ -251,7 +385,6 @@ export const updateTeamMember = async (
       if (activeAdminCount <= 1) {
         return {
           success: false,
-
           error:
             "Der letzte aktive Administrator kann nicht zum Mitglied herabgestuft werden.",
         };
@@ -284,14 +417,12 @@ export const updateTeamMember = async (
       if (conflictingMember.email === normalized.email) {
         return {
           success: false,
-
           error: "Diese E-Mail-Adresse wird bereits verwendet.",
         };
       }
 
       return {
         success: false,
-
         error: "Dieser Benutzername wird bereits verwendet.",
       };
     }
@@ -330,9 +461,6 @@ export const updateTeamMember = async (
       /*
        * Nach einer Passwortänderung werden
        * bestehende Sessions beendet.
-       *
-       * Der Benutzer muss sich danach mit
-       * dem neuen Passwort erneut anmelden.
        */
       if (passwordHash) {
         await transaction.authSession.deleteMany({
@@ -353,7 +481,6 @@ export const updateTeamMember = async (
 
     return {
       success: false,
-
       error: "Das Teammitglied konnte nicht aktualisiert werden.",
     };
   }
@@ -368,7 +495,6 @@ export const setTeamMemberActive = async (
   if (id === currentUser.id && !active) {
     return {
       success: false,
-
       error: "Du kannst deinen eigenen Benutzer nicht deaktivieren.",
     };
   }
@@ -389,24 +515,52 @@ export const setTeamMemberActive = async (
     if (!teamMember) {
       return {
         success: false,
-
         error: "Das Teammitglied wurde nicht gefunden.",
       };
     }
 
     /*
-     * Der letzte aktive Admin darf nicht
-     * deaktiviert werden.
+     * Ist der gewünschte Status ohnehin bereits
+     * gesetzt, müssen wir nichts verändern.
      */
-    if (!active && teamMember.active && teamMember.role === "admin") {
-      const activeAdminCount = await getActiveAdminCount();
+    if (teamMember.active === active) {
+      return {
+        success: true,
+      };
+    }
 
-      if (activeAdminCount <= 1) {
+    if (!active) {
+      /*
+       * Der letzte aktive Admin darf nicht
+       * deaktiviert werden.
+       */
+      if (teamMember.role === "admin") {
+        const activeAdminCount = await getActiveAdminCount();
+
+        if (activeAdminCount <= 1) {
+          return {
+            success: false,
+            error:
+              "Der letzte aktive Administrator kann nicht deaktiviert werden.",
+          };
+        }
+      }
+
+      /*
+       * Eine Person darf nicht deaktiviert werden,
+       * solange sie noch Teil einer aktuellen oder
+       * zukünftigen Rotationskonfiguration ist.
+       *
+       * Wir verändern die Rotation bewusst nicht
+       * automatisch, damit weder Personenreihenfolge
+       * noch T2-Rhythmus unerwartet verändert werden.
+       */
+      const rotationError = await getRotationParticipationError(id);
+
+      if (rotationError) {
         return {
           success: false,
-
-          error:
-            "Der letzte aktive Administrator kann nicht deaktiviert werden.",
+          error: rotationError,
         };
       }
     }
@@ -423,8 +577,8 @@ export const setTeamMemberActive = async (
       });
 
       /*
-       * Beim Deaktivieren werden bestehende
-       * Sessions ebenfalls beendet.
+       * Beim Deaktivieren werden sämtliche
+       * vorhandenen Sessions beendet.
        */
       if (!active) {
         await transaction.authSession.deleteMany({
@@ -445,7 +599,6 @@ export const setTeamMemberActive = async (
 
     return {
       success: false,
-
       error: "Der Status des Teammitglieds konnte nicht geändert werden.",
     };
   }
