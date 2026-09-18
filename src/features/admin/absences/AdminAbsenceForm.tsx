@@ -49,7 +49,9 @@ export const AdminAbsenceForm = ({
   const isEditing = absenceId !== undefined;
 
   const availableSubstitutes = teamMembers.filter(
-    (member) => member.id !== values.teamMemberId,
+    (member) =>
+      member.id !== values.teamMemberId &&
+      (member.active || member.id === values.substituteTeamMemberId),
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -223,6 +225,9 @@ export const AdminAbsenceForm = ({
             </option>
           ))}
         </select>
+        <p className={styles.hint}>
+          Die Vertretung darf im gewählten Zeitraum nicht selbst abwesend sein.
+        </p>
       </div>
 
       {error ? (

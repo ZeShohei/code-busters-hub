@@ -41,11 +41,95 @@ const validateInput = (input: SaveAbsenceInput): string | undefined => {
   return undefined;
 };
 
+const validateBusinessRules = async (
+  input: SaveAbsenceInput,
+  currentAbsenceId?: string,
+): Promise<string | undefined> => {
+  const startDate = toDatabaseDate(input.startDate);
+
+  const endDate = toDatabaseDate(input.endDate);
+
+  const teamMember = await prisma.teamMember.findUnique({
+    where: {
+      id: input.teamMemberId,
+    },
+  });
+
+  if (!teamMember) {
+    return "Das ausgewählte Teammitglied existiert nicht.";
+  }
+
+  const overlappingAbsence = await prisma.absence.findFirst({
+    where: {
+      teamMemberId: input.teamMemberId,
+
+      startDate: {
+        lte: endDate,
+      },
+
+      endDate: {
+        gte: startDate,
+      },
+
+      ...(currentAbsenceId
+        ? {
+            id: {
+              not: currentAbsenceId,
+            },
+          }
+        : {}),
+    },
+  });
+
+  if (overlappingAbsence) {
+    return `${teamMember.displayName} hat in diesem Zeitraum bereits eine Abwesenheit.`;
+  }
+
+  if (!input.substituteTeamMemberId) {
+    return undefined;
+  }
+
+  const substitute = await prisma.teamMember.findUnique({
+    where: {
+      id: input.substituteTeamMemberId,
+    },
+  });
+
+  if (!substitute) {
+    return "Die ausgewählte Vertretung existiert nicht.";
+  }
+
+  if (!substitute.active) {
+    return `${substitute.displayName} ist deaktiviert und kann nicht als Vertretung ausgewählt werden.`;
+  }
+
+  const substituteAbsence = await prisma.absence.findFirst({
+    where: {
+      teamMemberId: substitute.id,
+
+      startDate: {
+        lte: endDate,
+      },
+
+      endDate: {
+        gte: startDate,
+      },
+    },
+  });
+
+  if (substituteAbsence) {
+    return `${substitute.displayName} ist im ausgewählten Zeitraum selbst abwesend und kann die Vertretung nicht übernehmen.`;
+  }
+
+  return undefined;
+};
+
 const revalidateAbsencePages = () => {
   revalidatePath("/");
   revalidatePath("/team");
   revalidatePath("/absences");
   revalidatePath("/rotations");
+
   revalidatePath("/admin");
   revalidatePath("/admin/absences");
 };
@@ -62,13 +146,25 @@ export const createAbsence = async (
     };
   }
 
+  const businessRuleError = await validateBusinessRules(input);
+
+  if (businessRuleError) {
+    return {
+      success: false,
+      error: businessRuleError,
+    };
+  }
+
   try {
     await prisma.$transaction(async (transaction) => {
       const absence = await transaction.absence.create({
         data: {
           teamMemberId: input.teamMemberId,
+
           type: input.type,
+
           startDate: toDatabaseDate(input.startDate),
+
           endDate: toDatabaseDate(input.endDate),
         },
       });
@@ -77,6 +173,7 @@ export const createAbsence = async (
         await transaction.substitution.create({
           data: {
             absenceId: absence.id,
+
             substituteTeamMemberId: input.substituteTeamMemberId,
           },
         });
@@ -111,12 +208,22 @@ export const updateAbsence = async (
     };
   }
 
+  const businessRuleError = await validateBusinessRules(input, absenceId);
+
+  if (businessRuleError) {
+    return {
+      success: false,
+      error: businessRuleError,
+    };
+  }
+
   try {
     await prisma.$transaction(async (transaction) => {
       const existingAbsence = await transaction.absence.findUnique({
         where: {
           id: absenceId,
         },
+
         include: {
           substitution: true,
         },
@@ -130,10 +237,14 @@ export const updateAbsence = async (
         where: {
           id: absenceId,
         },
+
         data: {
           teamMemberId: input.teamMemberId,
+
           type: input.type,
+
           startDate: toDatabaseDate(input.startDate),
+
           endDate: toDatabaseDate(input.endDate),
         },
       });
@@ -143,11 +254,14 @@ export const updateAbsence = async (
           where: {
             absenceId,
           },
+
           update: {
             substituteTeamMemberId: input.substituteTeamMemberId,
           },
+
           create: {
             absenceId,
+
             substituteTeamMemberId: input.substituteTeamMemberId,
           },
         });
