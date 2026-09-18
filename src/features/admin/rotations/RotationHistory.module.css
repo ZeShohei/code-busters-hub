@@ -118,6 +118,33 @@
     color: #667085;
 }
 
+.loadMore {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding-top: 0.5rem;
+}
+
+.loadMore span {
+    font-size: 0.875rem;
+    color: #667085;
+}
+
+.loadMoreButton {
+    padding: 0.625rem 1rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.loadMoreButton:hover {
+    background: #f6f6f6;
+}
+
 @media (max-width: 50rem) {
     .header {
         flex-direction: column;

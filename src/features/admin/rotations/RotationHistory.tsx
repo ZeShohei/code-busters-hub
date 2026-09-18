@@ -30,7 +30,15 @@ export const RotationHistory = ({
   absences,
   substitutions,
 }: RotationHistoryProps) => {
+  const PAGE_SIZE = 12;
+
   const [filter, setFilter] = useState<HistoryFilter>("upcoming");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const changeFilter = (newFilter: HistoryFilter) => {
+    setFilter(newFilter);
+    setVisibleCount(PAGE_SIZE);
+  };
 
   const getTeamMemberName = (teamMemberId: string) => {
     return (
@@ -40,19 +48,27 @@ export const RotationHistory = ({
   };
 
   const filteredRotations = useMemo(() => {
-    const sorted = [...rotations].sort((a, b) =>
-      a.startDate.localeCompare(b.startDate),
-    );
+    const filtered =
+      filter === "all"
+        ? [...rotations]
+        : rotations.filter(
+            (rotation) =>
+              getDateRangeStatus(rotation.startDate, rotation.endDate) ===
+              filter,
+          );
 
-    if (filter === "all") {
-      return sorted;
-    }
+    return filtered.sort((a, b) => {
+      if (filter === "past") {
+        return b.startDate.localeCompare(a.startDate);
+      }
 
-    return sorted.filter(
-      (rotation) =>
-        getDateRangeStatus(rotation.startDate, rotation.endDate) === filter,
-    );
+      return a.startDate.localeCompare(b.startDate);
+    });
   }, [filter, rotations]);
+
+  const visibleRotations = filteredRotations.slice(0, visibleCount);
+
+  const hasMore = visibleCount < filteredRotations.length;
 
   return (
     <section className={styles.history}>
@@ -67,7 +83,7 @@ export const RotationHistory = ({
           <button
             type="button"
             className={filter === "all" ? styles.activeFilter : styles.filter}
-            onClick={() => setFilter("all")}
+            onClick={() => changeFilter("all")}
           >
             Alle
           </button>
@@ -75,7 +91,7 @@ export const RotationHistory = ({
           <button
             type="button"
             className={filter === "past" ? styles.activeFilter : styles.filter}
-            onClick={() => setFilter("past")}
+            onClick={() => changeFilter("past")}
           >
             Vergangenheit
           </button>
@@ -85,7 +101,7 @@ export const RotationHistory = ({
             className={
               filter === "current" ? styles.activeFilter : styles.filter
             }
-            onClick={() => setFilter("current")}
+            onClick={() => changeFilter("current")}
           >
             Aktuell
           </button>
@@ -95,7 +111,7 @@ export const RotationHistory = ({
             className={
               filter === "upcoming" ? styles.activeFilter : styles.filter
             }
-            onClick={() => setFilter("upcoming")}
+            onClick={() => changeFilter("upcoming")}
           >
             Zukunft
           </button>
@@ -106,7 +122,7 @@ export const RotationHistory = ({
         <p>Für diesen Filter sind keine Rotationen vorhanden.</p>
       ) : (
         <div className={styles.list}>
-          {filteredRotations.map((rotation) => {
+          {visibleRotations.map((rotation) => {
             const resolution = resolveRotation(
               rotation,
               absences,
@@ -172,6 +188,23 @@ export const RotationHistory = ({
               </article>
             );
           })}
+          {hasMore ? (
+            <div className={styles.loadMore}>
+              <button
+                type="button"
+                className={styles.loadMoreButton}
+                onClick={() =>
+                  setVisibleCount((current) => current + PAGE_SIZE)
+                }
+              >
+                Mehr anzeigen
+              </button>
+
+              <span>
+                {visibleRotations.length} von {filteredRotations.length}
+              </span>
+            </div>
+          ) : null}
         </div>
       )}
     </section>
