@@ -1,20 +1,26 @@
-import { absences, substitutions } from "@/features/absences/mockData";
-import { deploymentRotations } from "@/features/deploymentRotation/mockData";
-import { dispatcherRotations } from "@/features/dispatcherRotation/mockData";
 import {
   deploymentRotationConfig,
   dispatcherRotationConfig,
 } from "@/features/rotations/config";
 import { resolveRotation } from "@/features/rotations/utils";
 import { TeamList } from "@/features/team/TeamList";
-import { teamMembers } from "@/features/team/mockData";
 import { getCurrentRotation } from "@/utils/date";
 import { Breadcrumbs } from "@/components/Breadcrumbs/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+import { getAppData } from "@/data/appData";
 
 import styles from "./page.module.css";
 
-export default function TeamPage() {
+export default async function TeamPage() {
+  const {
+    teamMembers,
+    absences,
+    substitutions,
+    dispatcherConfig,
+    deploymentConfig,
+    dispatcherRotations,
+    deploymentRotations,
+  } = await getAppData();
   const currentDispatcher = getCurrentRotation(dispatcherRotations);
 
   const currentDeployment = getCurrentRotation(deploymentRotations);
@@ -50,12 +56,8 @@ export default function TeamPage() {
       <TeamList
         teamMembers={teamMembers}
         absences={absences}
-        dispatcherParticipantIds={
-          dispatcherRotationConfig.participantTeamMemberIds
-        }
-        deploymentParticipantIds={
-          deploymentRotationConfig.participantTeamMemberIds
-        }
+        dispatcherParticipantIds={dispatcherConfig.participantTeamMemberIds}
+        deploymentParticipantIds={deploymentConfig.participantTeamMemberIds}
         dispatcherResolution={dispatcherResolution}
         deploymentResolution={deploymentResolution}
       />
