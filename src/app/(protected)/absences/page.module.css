@@ -1,5 +1,48 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 3rem;
+    gap: 2rem;
+}
+
+.header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.createButton {
+    flex-shrink: 0;
+
+    padding: 0.75rem 1rem;
+
+    border: 1px solid #111111;
+    border-radius: 0.5rem;
+
+    background: #111111;
+    color: #ffffff;
+
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.createButton:hover {
+    background: #292929;
+}
+
+.createButton:focus-visible {
+    outline: 0.125rem solid #111111;
+    outline-offset: 0.125rem;
+}
+
+@media (max-width: 50rem) {
+    .header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .createButton {
+        width: fit-content;
+    }
 }
