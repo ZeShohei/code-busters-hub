@@ -2,19 +2,25 @@ import type { ReactNode } from "react";
 
 import { Navigation } from "@/components/Navigation/Navigation";
 
+import { getCurrentUser } from "@/lib/auth";
+
 import styles from "./AppShell.module.css";
 
 interface AppShellProps {
   children: ReactNode;
 }
 
-export const AppShell = ({ children }: AppShellProps) => {
+export const AppShell = async ({ children }: AppShellProps) => {
+  const currentUser = await getCurrentUser();
+
+  const isAdmin = currentUser?.role === "admin";
+
   return (
     <div className={styles.appShell}>
       <aside className={styles.sidebar}>
         <div className={styles.logo}>Code Busters Hub</div>
 
-        <Navigation />
+        <Navigation isAdmin={isAdmin} />
       </aside>
 
       <main className={styles.content}>{children}</main>

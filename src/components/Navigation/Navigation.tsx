@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 
 import styles from "./Navigation.module.css";
 
+interface NavigationProps {
+  isAdmin: boolean;
+}
+
 const navigationItems = [
   {
     href: "/",
@@ -22,11 +26,12 @@ const navigationItems = [
     href: "/rotations",
     label: "Rotationen",
   },
-  {
-    href: "/admin",
-    label: "Admin",
-  },
 ];
+
+const adminNavigationItem = {
+  href: "/admin",
+  label: "Admin",
+};
 
 const isNavigationItemActive = (pathname: string, href: string) => {
   if (href === "/") {
@@ -36,12 +41,16 @@ const isNavigationItemActive = (pathname: string, href: string) => {
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
-export const Navigation = () => {
+export const Navigation = ({ isAdmin }: NavigationProps) => {
   const pathname = usePathname();
+
+  const items = isAdmin
+    ? [...navigationItems, adminNavigationItem]
+    : navigationItems;
 
   return (
     <nav className={styles.navigation} aria-label="Hauptnavigation">
-      {navigationItems.map((item) => {
+      {items.map((item) => {
         const isActive = isNavigationItemActive(pathname, item.href);
 
         return (
