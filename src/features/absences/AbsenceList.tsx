@@ -231,16 +231,16 @@ export const AbsenceList = ({
               absence.endDate,
             );
 
-            /*
-             * Eine Vertretung gehört eindeutig
-             * zu genau dieser Abwesenheit.
-             */
             const substitution = substitutions.find(
               (item) => item.absenceId === absence.id,
             );
 
-            const canManage =
-              absence.teamMemberId === currentUserId && status === "upcoming";
+            const isOwnAbsence = absence.teamMemberId === currentUserId;
+
+            const canManage = isOwnAbsence && status === "upcoming";
+
+            const canManageHandover =
+              isOwnAbsence && absence.type === "vacation" && status !== "past";
 
             return (
               <article key={absence.id} className={styles.card}>
@@ -289,25 +289,38 @@ export const AbsenceList = ({
                     {getDateRangeStatusLabel(status)}
                   </strong>
 
-                  {canManage ? (
+                  {canManageHandover || canManage ? (
                     <div className={styles.itemActions}>
-                      <Link
-                        href={`/absences/${absence.id}/edit`}
-                        className={styles.editLink}
-                      >
-                        Bearbeiten
-                      </Link>
+                      {canManageHandover ? (
+                        <Link
+                          href={`/absences/${absence.id}/handover`}
+                          className={styles.editLink}
+                        >
+                          Übergabe
+                        </Link>
+                      ) : null}
 
-                      <button
-                        type="button"
-                        className={styles.cancelButton}
-                        disabled={cancellingAbsenceId === absence.id}
-                        onClick={() => handleCancelAbsence(absence.id)}
-                      >
-                        {cancellingAbsenceId === absence.id
-                          ? "Storniert …"
-                          : "Stornieren"}
-                      </button>
+                      {canManage ? (
+                        <>
+                          <Link
+                            href={`/absences/${absence.id}/edit`}
+                            className={styles.editLink}
+                          >
+                            Bearbeiten
+                          </Link>
+
+                          <button
+                            type="button"
+                            className={styles.cancelButton}
+                            disabled={cancellingAbsenceId === absence.id}
+                            onClick={() => handleCancelAbsence(absence.id)}
+                          >
+                            {cancellingAbsenceId === absence.id
+                              ? "Storniert …"
+                              : "Stornieren"}
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

@@ -1,0 +1,300 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+
+    padding: 1.25rem;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-background-surface);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.summary span {
+    color: var(--color-text-secondary);
+
+    font-size: 0.75rem;
+}
+
+.summary strong {
+    color: var(--color-text-primary);
+
+    font-size: 0.9375rem;
+}
+
+.readOnlyNotice {
+    padding: 1rem;
+
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-info);
+    color: var(--color-text-info);
+
+    font-size: 0.875rem;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    padding: 1.5rem;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+
+    background: var(--color-background-surface);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.sectionHeader > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sectionHeader h2 {
+    color: var(--color-text-primary);
+
+    font-size: 1.125rem;
+}
+
+.sectionHeader p {
+    color: var(--color-text-secondary);
+
+    font-size: 0.875rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.field label {
+    color: var(--color-text-primary);
+
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.field input,
+.field textarea {
+    width: 100%;
+
+    padding: 0.75rem;
+
+    border: 0.0625rem solid var(--color-border-default);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+
+    resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+    border-color: var(--color-brand-primary);
+
+    outline: none;
+
+    box-shadow: 0 0 0 0.1875rem var(--color-brand-focus-ring);
+}
+
+.field input:disabled,
+.field textarea:disabled {
+    border-color: var(--color-border-subtle);
+
+    background: var(--color-background-disabled);
+    color: var(--color-text-disabled);
+
+    cursor: default;
+
+    opacity: 1;
+}
+
+.tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.task {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    padding: 1rem;
+
+    border: 0.0625rem solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-subtle);
+}
+
+.taskHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.taskHeader strong {
+    color: var(--color-text-primary);
+}
+
+.taskGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.empty {
+    color: var(--color-text-muted);
+
+    font-size: 0.875rem;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.primaryButton,
+.secondaryButton,
+.removeButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 2.5rem;
+
+    padding: 0.5rem 0.875rem;
+
+    border-radius: var(--radius-md);
+
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease;
+}
+
+.primaryButton {
+    border: 0.0625rem solid var(--color-brand-primary);
+
+    background: var(--color-brand-primary);
+    color: var(--color-text-on-brand);
+}
+
+.primaryButton:hover:not(:disabled) {
+    border-color: var(--color-brand-primary-hover);
+
+    background: var(--color-brand-primary-hover);
+}
+
+.secondaryButton {
+    border: 0.0625rem solid var(--color-border-default);
+
+    background: var(--color-background-surface);
+    color: var(--color-text-primary);
+}
+
+.secondaryButton:hover:not(:disabled) {
+    border-color: var(--color-brand-primary);
+
+    background: var(--color-background-primary-subtle);
+    color: var(--color-text-brand);
+}
+
+.removeButton {
+    border: 0.0625rem solid var(--color-border-error);
+
+    background: var(--color-background-error);
+    color: var(--color-text-error);
+}
+
+.removeButton:hover:not(:disabled) {
+    border-color: var(--color-text-error);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.removeButton:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.5;
+}
+
+.error,
+.success {
+    padding: 0.75rem 1rem;
+
+    border-radius: var(--radius-md);
+
+    font-size: 0.875rem;
+}
+
+.error {
+    border: 0.0625rem solid var(--color-border-error);
+
+    background: var(--color-background-error);
+    color: var(--color-text-error);
+}
+
+.success {
+    border: 0.0625rem solid var(--color-text-success);
+
+    background: var(--color-background-success);
+    color: var(--color-text-success);
+}
+
+@media (max-width: 48rem) {
+    .summary,
+    .taskGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .sectionHeader,
+    .actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .primaryButton,
+    .secondaryButton,
+    .removeButton {
+        width: 100%;
+    }
+}
