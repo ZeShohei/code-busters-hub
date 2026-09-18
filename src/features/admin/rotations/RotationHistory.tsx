@@ -11,7 +11,12 @@ import type {
 
 import { formatDate, getCalendarWeek, getDateRangeStatus } from "@/utils/date";
 
-import { resolveRotation } from "@/features/rotations/utils";
+import {
+  getRotationAssigneeName,
+  isT2TeamRotation,
+  resolveRotation,
+} from "@/features/rotations/utils";
+
 import { RotationStatusBadge } from "@/features/rotations/RotationStatusBadge";
 
 import styles from "./RotationHistory.module.css";
@@ -26,6 +31,21 @@ interface RotationHistoryProps {
 
 type HistoryFilter = "all" | "past" | "current" | "upcoming";
 
+const PAGE_SIZE = 12;
+
+const getDeploymentKindLabel = (rotation: RotationAssignment) => {
+  switch (rotation.deploymentKind) {
+    case "special":
+      return "Sonderdeployment";
+
+    case "rescheduled":
+      return "Verschobenes Deployment";
+
+    default:
+      return "Reguläres Deployment";
+  }
+};
+
 export const RotationHistory = ({
   title,
   rotations,
@@ -33,25 +53,24 @@ export const RotationHistory = ({
   absences,
   substitutions,
 }: RotationHistoryProps) => {
-  const PAGE_SIZE = 12;
-
   const [filter, setFilter] = useState<HistoryFilter>("upcoming");
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [search, setSearch] = useState("");
 
+  const isDeploymentHistory = rotations.some(
+    (rotation) => rotation.type === "deployment",
+  );
+
   const changeFilter = (newFilter: HistoryFilter) => {
     setFilter(newFilter);
     setVisibleCount(PAGE_SIZE);
   };
 
-  const getTeamMemberName = useCallback(
+  const getAssigneeName = useCallback(
     (teamMemberId: string) => {
-      return (
-        teamMembers.find((member) => member.id === teamMemberId)?.displayName ??
-        "Unbekannt"
-      );
+      return getRotationAssigneeName(teamMemberId, teamMembers);
     },
     [teamMembers],
   );
@@ -63,9 +82,9 @@ export const RotationHistory = ({
       .replace(/^kw\s*/, "");
 
     const filtered = rotations.filter((rotation) => {
-      const matchesStatus =
-        filter === "all" ||
-        getDateRangeStatus(rotation.startDate, rotation.endDate) === filter;
+      const status = getDateRangeStatus(rotation.startDate, rotation.endDate);
+
+      const matchesStatus = filter === "all" || status === filter;
 
       if (!matchesStatus) {
         return false;
@@ -77,31 +96,40 @@ export const RotationHistory = ({
 
       const resolution = resolveRotation(rotation, absences, substitutions);
 
-      const assignedName = getTeamMemberName(
+      const assignedName = getAssigneeName(
         resolution.assignedTeamMemberId,
       ).toLowerCase();
 
-      const effectiveName = getTeamMemberName(
+      const effectiveName = getAssigneeName(
         resolution.effectiveTeamMemberId,
       ).toLowerCase();
 
       const calendarWeek = String(getCalendarWeek(rotation.startDate));
 
+      const deploymentKind =
+        rotation.type === "deployment"
+          ? getDeploymentKindLabel(rotation).toLowerCase()
+          : "";
+
+      const reason = rotation.reason?.toLowerCase() ?? "";
+
       return (
         assignedName.includes(normalizedSearch) ||
         effectiveName.includes(normalizedSearch) ||
-        calendarWeek === normalizedSearch
+        calendarWeek === normalizedSearch ||
+        deploymentKind.includes(normalizedSearch) ||
+        reason.includes(normalizedSearch)
       );
     });
 
-    return filtered.sort((a, b) => {
+    return filtered.sort((first, second) => {
       if (filter === "past") {
-        return b.startDate.localeCompare(a.startDate);
+        return second.startDate.localeCompare(first.startDate);
       }
 
-      return a.startDate.localeCompare(b.startDate);
+      return first.startDate.localeCompare(second.startDate);
     });
-  }, [absences, filter, rotations, search, substitutions, getTeamMemberName]);
+  }, [absences, filter, rotations, search, substitutions, getAssigneeName]);
 
   const visibleRotations = filteredRotations.slice(0, visibleCount);
 
@@ -113,7 +141,11 @@ export const RotationHistory = ({
         <div>
           <h2>{title}</h2>
 
-          <p>Verlauf aller generierten Rotationsschritte.</p>
+          <p>
+            {isDeploymentHistory
+              ? "Vorschau und Verlauf der Deployment-Termine inklusive T2 Team, Verschiebungen und Sonderdeployments."
+              : "Verlauf aller generierten Rotationsschritte."}
+          </p>
         </div>
 
         <div className={styles.controls}>
@@ -129,7 +161,9 @@ export const RotationHistory = ({
               id={`rotation-history-search-${title}`}
               type="search"
               value={search}
-              placeholder="Name oder KW"
+              placeholder={
+                isDeploymentHistory ? "Name, T2, KW oder Typ" : "Name oder KW"
+              }
               onChange={(event) => {
                 setSearch(event.target.value);
 
@@ -196,11 +230,11 @@ export const RotationHistory = ({
               substitutions,
             );
 
-            const assignedName = getTeamMemberName(
+            const assignedName = getAssigneeName(
               resolution.assignedTeamMemberId,
             );
 
-            const effectiveName = getTeamMemberName(
+            const effectiveName = getAssigneeName(
               resolution.effectiveTeamMemberId,
             );
 
@@ -209,29 +243,31 @@ export const RotationHistory = ({
               rotation.endDate,
             );
 
+            const isDeployment = rotation.type === "deployment";
+
+            const isT2 = isT2TeamRotation(rotation);
+
             return (
               <article key={rotation.id} className={styles.item}>
                 <div className={styles.period}>
                   <strong>KW {getCalendarWeek(rotation.startDate)}</strong>
 
                   <span>
-                    {rotation.type === "deployment"
+                    {isDeployment
                       ? formatDate(rotation.startDate)
                       : `${formatDate(rotation.startDate)} – ${formatDate(
                           rotation.endDate,
                         )}`}
                   </span>
 
-                  {rotation.deploymentKind === "special" ? (
-                    <span>Sonderdeployment</span>
+                  {isDeployment ? (
+                    <span>{getDeploymentKindLabel(rotation)}</span>
                   ) : null}
 
-                  {rotation.deploymentKind === "rescheduled" ? (
+                  {rotation.deploymentKind === "rescheduled" &&
+                  rotation.originalDate ? (
                     <span>
-                      Verschoben
-                      {rotation.originalDate
-                        ? ` von ${formatDate(rotation.originalDate)}`
-                        : ""}
+                      Ursprünglich: {formatDate(rotation.originalDate)}
                     </span>
                   ) : null}
 
@@ -250,6 +286,10 @@ export const RotationHistory = ({
                   <span className={styles.label}>Eingeteilt</span>
 
                   <strong>{assignedName}</strong>
+
+                  {isT2 ? (
+                    <span className={styles.label}>Externes Team</span>
+                  ) : null}
                 </div>
 
                 <div className={styles.result}>
@@ -288,3 +328,5 @@ export const RotationHistory = ({
     </section>
   );
 };
+
+RotationHistory.displayName = "RotationHistory";
