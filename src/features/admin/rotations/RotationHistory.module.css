@@ -145,6 +145,56 @@
     background: #f6f6f6;
 }
 
+.controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 14rem;
+}
+
+.searchLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.search input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    font: inherit;
+}
+
+.search input:focus {
+    outline: 0.125rem solid #111111;
+    outline-offset: 0.125rem;
+}
+
+.resultCount {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #667085;
+}
+
+@media (max-width: 50rem) {
+    .controls {
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .search {
+        width: 100%;
+    }
+}
+
 @media (max-width: 50rem) {
     .header {
         flex-direction: column;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type {
   Absence,
@@ -34,28 +34,60 @@ export const RotationHistory = ({
 
   const [filter, setFilter] = useState<HistoryFilter>("upcoming");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [search, setSearch] = useState("");
 
   const changeFilter = (newFilter: HistoryFilter) => {
     setFilter(newFilter);
     setVisibleCount(PAGE_SIZE);
   };
 
-  const getTeamMemberName = (teamMemberId: string) => {
-    return (
-      teamMembers.find((member) => member.id === teamMemberId)?.displayName ??
-      "Unbekannt"
-    );
-  };
+  const getTeamMemberName = useCallback(
+    (teamMemberId: string) => {
+      return (
+        teamMembers.find((member) => member.id === teamMemberId)?.displayName ??
+        "Unbekannt"
+      );
+    },
+    [teamMembers],
+  );
 
   const filteredRotations = useMemo(() => {
-    const filtered =
-      filter === "all"
-        ? [...rotations]
-        : rotations.filter(
-            (rotation) =>
-              getDateRangeStatus(rotation.startDate, rotation.endDate) ===
-              filter,
-          );
+    const normalizedSearch = search
+      .trim()
+      .toLowerCase()
+      .replace(/^kw\s*/, "");
+
+    const filtered = rotations.filter((rotation) => {
+      const matchesStatus =
+        filter === "all" ||
+        getDateRangeStatus(rotation.startDate, rotation.endDate) === filter;
+
+      if (!matchesStatus) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const resolution = resolveRotation(rotation, absences, substitutions);
+
+      const assignedName = getTeamMemberName(
+        resolution.assignedTeamMemberId,
+      ).toLowerCase();
+
+      const effectiveName = getTeamMemberName(
+        resolution.effectiveTeamMemberId,
+      ).toLowerCase();
+
+      const calendarWeek = String(getCalendarWeek(rotation.startDate));
+
+      return (
+        assignedName.includes(normalizedSearch) ||
+        effectiveName.includes(normalizedSearch) ||
+        calendarWeek === normalizedSearch
+      );
+    });
 
     return filtered.sort((a, b) => {
       if (filter === "past") {
@@ -64,7 +96,7 @@ export const RotationHistory = ({
 
       return a.startDate.localeCompare(b.startDate);
     });
-  }, [filter, rotations]);
+  }, [absences, filter, rotations, search, substitutions, getTeamMemberName]);
 
   const visibleRotations = filteredRotations.slice(0, visibleCount);
 
@@ -78,43 +110,66 @@ export const RotationHistory = ({
 
           <p>Verlauf aller generierten Rotationsschritte.</p>
         </div>
+        <div className={styles.controls}>
+          <div className={styles.search}>
+            <label
+              htmlFor={`rotation-history-search-${title}`}
+              className={styles.searchLabel}
+            >
+              History durchsuchen
+            </label>
 
-        <div className={styles.filters} aria-label="History filtern">
-          <button
-            type="button"
-            className={filter === "all" ? styles.activeFilter : styles.filter}
-            onClick={() => changeFilter("all")}
-          >
-            Alle
-          </button>
+            <input
+              id={`rotation-history-search-${title}`}
+              type="search"
+              value={search}
+              placeholder="Name oder KW"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
+            />
+          </div>
 
-          <button
-            type="button"
-            className={filter === "past" ? styles.activeFilter : styles.filter}
-            onClick={() => changeFilter("past")}
-          >
-            Vergangenheit
-          </button>
+          <div className={styles.filters} aria-label="History filtern">
+            <button
+              type="button"
+              className={filter === "all" ? styles.activeFilter : styles.filter}
+              onClick={() => changeFilter("all")}
+            >
+              Alle
+            </button>
 
-          <button
-            type="button"
-            className={
-              filter === "current" ? styles.activeFilter : styles.filter
-            }
-            onClick={() => changeFilter("current")}
-          >
-            Aktuell
-          </button>
+            <button
+              type="button"
+              className={
+                filter === "past" ? styles.activeFilter : styles.filter
+              }
+              onClick={() => changeFilter("past")}
+            >
+              Vergangenheit
+            </button>
 
-          <button
-            type="button"
-            className={
-              filter === "upcoming" ? styles.activeFilter : styles.filter
-            }
-            onClick={() => changeFilter("upcoming")}
-          >
-            Zukunft
-          </button>
+            <button
+              type="button"
+              className={
+                filter === "current" ? styles.activeFilter : styles.filter
+              }
+              onClick={() => changeFilter("current")}
+            >
+              Aktuell
+            </button>
+
+            <button
+              type="button"
+              className={
+                filter === "upcoming" ? styles.activeFilter : styles.filter
+              }
+              onClick={() => changeFilter("upcoming")}
+            >
+              Zukunft
+            </button>
+          </div>
         </div>
       </div>
 
@@ -122,6 +177,10 @@ export const RotationHistory = ({
         <p>Für diesen Filter sind keine Rotationen vorhanden.</p>
       ) : (
         <div className={styles.list}>
+          <p className={styles.resultCount}>
+            {filteredRotations.length}{" "}
+            {filteredRotations.length === 1 ? "Eintrag" : "Einträge"}
+          </p>
           {visibleRotations.map((rotation) => {
             const resolution = resolveRotation(
               rotation,
