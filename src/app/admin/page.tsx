@@ -39,13 +39,11 @@ export default function AdminPage() {
           <span>Demnächst</span>
         </div>
 
-        <div className={styles.cardDisabled}>
+        <Link href="/admin/rotations" className={styles.card}>
           <h2>Rotationen</h2>
 
           <p>Dispatcher- und Deployment-Rotation konfigurieren.</p>
-
-          <span>Demnächst</span>
-        </div>
+        </Link>
       </div>
     </div>
   );
