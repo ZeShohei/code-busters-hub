@@ -32,11 +32,30 @@ model TeamMember {
   active      Boolean        @default(true)
   role        TeamMemberRole @default(member)
 
-  absences               Absence[]
-  substitutionsByMe      Substitution[]        @relation("SubstituteTeamMember")
-  rotationParticipations RotationParticipant[]
+  username     String? @unique
+  passwordHash String?
+
+  absences                Absence[]
+  substitutionsByMe       Substitution[]        @relation("SubstituteTeamMember")
+  rotationParticipations  RotationParticipant[]
+  sessions                AuthSession[]
 
   createdAt DateTime @default(now())
+}
+
+model AuthSession {
+  id String @id @default(uuid())
+
+  tokenHash String @unique
+
+  teamMemberId String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([teamMemberId])
+  @@index([expiresAt])
 }
 
 model Absence {
@@ -44,8 +63,8 @@ model Absence {
   teamMemberId String
   teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
 
-  startDate DateTime    @db.Date
-  endDate   DateTime    @db.Date
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
   type      AbsenceType
 
   substitution Substitution?
