@@ -10,6 +10,7 @@ import type {
 } from "@/types/team";
 import { formatDate, getCalendarWeek, getDateRangeStatus } from "@/utils/date";
 import { resolveRotation } from "@/features/rotations/utils";
+import { RotationStatusBadge } from "@/features/rotations/RotationStatusBadge";
 
 import styles from "./RotationHistory.module.css";
 
@@ -228,21 +229,14 @@ export const RotationHistory = ({
                 </div>
 
                 <div className={styles.result}>
-                  {resolution.status === "regular" ? (
-                    <span className={styles.regular}>Regulär</span>
-                  ) : null}
-
-                  {resolution.status === "substitution" ? (
-                    <>
-                      <span className={styles.substitution}>Vertretung</span>
-
-                      <span>{effectiveName}</span>
-                    </>
-                  ) : null}
-
-                  {resolution.status === "uncovered" ? (
-                    <span className={styles.uncovered}>Nicht besetzt</span>
-                  ) : null}
+                  <RotationStatusBadge
+                    resolution={resolution}
+                    effectiveTeamMemberName={
+                      resolution.status === "substitution"
+                        ? effectiveName
+                        : undefined
+                    }
+                  />
                 </div>
               </article>
             );

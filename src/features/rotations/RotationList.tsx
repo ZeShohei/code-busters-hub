@@ -9,6 +9,7 @@ import { formatDate, getCalendarWeek } from "@/utils/date";
 
 import { getTeamMemberName } from "@/features/team/utils";
 
+import { RotationStatusBadge } from "./RotationStatusBadge";
 import { resolveRotation } from "./utils";
 
 import styles from "./RotationList.module.css";
@@ -42,6 +43,16 @@ export const RotationList = ({
         {rotations.map((rotation) => {
           const resolution = resolveRotation(rotation, absences, substitutions);
 
+          const assignedTeamMemberName = getTeamMemberName(
+            resolution.assignedTeamMemberId,
+            teamMembers,
+          );
+
+          const effectiveTeamMemberName = getTeamMemberName(
+            resolution.effectiveTeamMemberId,
+            teamMembers,
+          );
+
           const cardClassName = [
             styles.card,
             resolution.status === "substitution" ? styles.cardSubstitution : "",
@@ -59,43 +70,26 @@ export const RotationList = ({
               </div>
 
               <div className={styles.person}>
-                <span>Verantwortlich</span>
+                <span>Eingeteilt</span>
 
-                <strong>
-                  {getTeamMemberName(
-                    resolution.effectiveTeamMemberId,
-                    teamMembers,
-                  )}
-                </strong>
+                <strong>{assignedTeamMemberName}</strong>
 
-                {resolution.status === "regular" && (
-                  <span className={styles.statusRegular}>
-                    Regulär eingeteilt
-                  </span>
-                )}
-
-                {resolution.status === "substitution" && (
-                  <span className={styles.statusSubstitution}>
-                    Vertretung für{" "}
-                    {getTeamMemberName(
-                      resolution.assignedTeamMemberId,
-                      teamMembers,
-                    )}
-                  </span>
-                )}
-
-                {resolution.status === "uncovered" && (
-                  <span className={styles.statusWarning}>
-                    Abwesend – keine Vertretung
-                  </span>
-                )}
+                <RotationStatusBadge
+                  resolution={resolution}
+                  effectiveTeamMemberName={
+                    resolution.status === "substitution"
+                      ? effectiveTeamMemberName
+                      : undefined
+                  }
+                />
               </div>
 
               <div className={styles.period}>
                 <span>Zeitraum</span>
 
                 <strong>
-                  {formatDate(rotation.startDate)} –{" "}
+                  {formatDate(rotation.startDate)}
+                  {" – "}
                   {formatDate(rotation.endDate)}
                 </strong>
               </div>

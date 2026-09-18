@@ -11,6 +11,7 @@ import type {
 
 import { resolveRotation } from "@/features/rotations/utils";
 import { getTeamMemberName } from "@/features/team/utils";
+import { RotationStatusBadge } from "@/features/rotations/RotationStatusBadge";
 
 import {
   addWeeks,
@@ -131,25 +132,19 @@ export const WeekOverview = ({
               : "Nicht eingeteilt"}
           </strong>
 
-          {dispatcherResolution?.status === "regular" && (
-            <span className={styles.regular}>Regulär eingeteilt</span>
-          )}
-
-          {dispatcherResolution?.status === "substitution" && (
-            <span className={styles.substitution}>
-              Vertretung für{" "}
-              {getTeamMemberName(
-                dispatcherResolution.assignedTeamMemberId,
-                teamMembers,
-              )}
-            </span>
-          )}
-
-          {dispatcherResolution?.status === "uncovered" && (
-            <span className={styles.warning}>
-              Abwesend – keine Vertretung eingetragen
-            </span>
-          )}
+          {dispatcherResolution ? (
+            <RotationStatusBadge
+              resolution={dispatcherResolution}
+              effectiveTeamMemberName={
+                dispatcherResolution.status === "substitution"
+                  ? getTeamMemberName(
+                      dispatcherResolution.effectiveTeamMemberId,
+                      teamMembers,
+                    )
+                  : undefined
+              }
+            />
+          ) : null}
         </article>
 
         <article className={styles.rotation}>
@@ -164,25 +159,19 @@ export const WeekOverview = ({
               : "Nicht eingeteilt"}
           </strong>
 
-          {deploymentResolution?.status === "regular" && (
-            <span className={styles.regular}>Regulär eingeteilt</span>
-          )}
-
-          {deploymentResolution?.status === "substitution" && (
-            <span className={styles.substitution}>
-              Vertretung für{" "}
-              {getTeamMemberName(
-                deploymentResolution.assignedTeamMemberId,
-                teamMembers,
-              )}
-            </span>
-          )}
-
-          {deploymentResolution?.status === "uncovered" && (
-            <span className={styles.warning}>
-              Abwesend – keine Vertretung eingetragen
-            </span>
-          )}
+          {deploymentResolution ? (
+            <RotationStatusBadge
+              resolution={deploymentResolution}
+              effectiveTeamMemberName={
+                deploymentResolution.status === "substitution"
+                  ? getTeamMemberName(
+                      deploymentResolution.effectiveTeamMemberId,
+                      teamMembers,
+                    )
+                  : undefined
+              }
+            />
+          ) : null}
         </article>
       </div>
 

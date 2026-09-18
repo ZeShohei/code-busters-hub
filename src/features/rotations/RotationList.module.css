@@ -77,24 +77,6 @@
     font-size: 0.875rem;
 }
 
-.statusRegular {
-    color: #166534 !important;
-    font-size: 0.75rem !important;
-    font-weight: 600;
-}
-
-.statusSubstitution {
-    color: #1d4ed8 !important;
-    font-size: 0.75rem !important;
-    font-weight: 600;
-}
-
-.statusWarning {
-    color: #b45309 !important;
-    font-size: 0.75rem !important;
-    font-weight: 600;
-}
-
 @media (max-width: 48rem) {
     .card {
         grid-template-columns: 1fr;

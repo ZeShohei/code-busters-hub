@@ -1,0 +1,36 @@
+.regular,
+.substitution,
+.uncovered {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.regular {
+    background: #ecfdf3;
+    color: #027a48;
+}
+
+.substitution {
+    background: #fffaeb;
+    color: #b54708;
+}
+
+.uncovered {
+    background: #fff1f0;
+    color: #b42318;
+}
+
+.substitutionWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.name {
+    font-size: 0.875rem;
+}
