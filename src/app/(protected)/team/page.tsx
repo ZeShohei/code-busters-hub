@@ -6,10 +6,7 @@ import { getAppData } from "@/data/appData";
 import { resolveRotation } from "@/features/rotations/utils";
 import { TeamList } from "@/features/team/TeamList";
 
-import {
-  getCurrentRotation,
-  getUpcomingRotationsInCurrentWeek,
-} from "@/utils/date";
+import { getCurrentRotation, isDateInCurrentWeek } from "@/utils/date";
 
 import styles from "./page.module.css";
 
@@ -31,17 +28,23 @@ export default async function TeamPage() {
     : undefined;
 
   /*
-   * Deployments sind inzwischen einzelne Termine.
+   * Die Teamübersicht zeigt ausdrücklich
+   * "Diese Woche".
    *
-   * Deshalb reicht getCurrentRotation() hier nicht:
-   * Das würde ein Deployment nur genau am
-   * Deployment-Tag finden.
+   * Deshalb berücksichtigen wir hier alle
+   * Deployments der aktuellen Woche:
    *
-   * Stattdessen holen wir alle Deployments,
-   * die in der aktuellen Woche noch anstehen.
+   * - bereits vergangene Termine
+   * - heutige Termine
+   * - kommende Termine
+   *
+   * Ein Deployment vom Donnerstag bleibt
+   * dadurch auch am Freitag noch als
+   * Wochenverantwortung sichtbar.
    */
-  const deploymentsThisWeek =
-    getUpcomingRotationsInCurrentWeek(deploymentRotations);
+  const deploymentsThisWeek = deploymentRotations.filter((rotation) =>
+    isDateInCurrentWeek(rotation.startDate),
+  );
 
   const deploymentResolutionsThisWeek = deploymentsThisWeek.map((rotation) => ({
     rotation,
