@@ -27,13 +27,11 @@
 
 .summary span {
     color: var(--color-text-secondary);
-
     font-size: 0.75rem;
 }
 
 .summary strong {
     color: var(--color-text-primary);
-
     font-size: 0.9375rem;
 }
 
@@ -79,13 +77,11 @@
 
 .sectionHeader h2 {
     color: var(--color-text-primary);
-
     font-size: 1.125rem;
 }
 
 .sectionHeader p {
     color: var(--color-text-secondary);
-
     font-size: 0.875rem;
 }
 
@@ -135,8 +131,7 @@
     background: var(--color-background-disabled);
     color: var(--color-text-disabled);
 
-    cursor: default;
-
+    cursor: not-allowed;
     opacity: 1;
 }
 
@@ -165,11 +160,6 @@
 
 .taskCompleted {
     opacity: 0.7;
-}
-
-.taskCompleted .field input,
-.taskCompleted .field textarea {
-    text-decoration: none;
 }
 
 .taskHeader {
@@ -209,25 +199,29 @@
 
 .taskGrid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
     gap: 1rem;
 }
 
 .empty {
     color: var(--color-text-muted);
-
     font-size: 0.875rem;
 }
 
 .actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 0.75rem;
 }
 
 .primaryButton,
 .secondaryButton,
-.removeButton {
+.removeButton,
+.deleteButton {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -259,7 +253,6 @@
 
 .primaryButton:hover:not(:disabled) {
     border-color: var(--color-brand-primary-hover);
-
     background: var(--color-brand-primary-hover);
 }
 
@@ -277,22 +270,36 @@
     color: var(--color-text-brand);
 }
 
-.removeButton {
+.removeButton,
+.deleteButton {
     border: 0.0625rem solid var(--color-border-error);
 
     background: var(--color-background-error);
     color: var(--color-text-error);
 }
 
-.removeButton:hover:not(:disabled) {
+.removeButton:hover:not(:disabled),
+.deleteButton:hover:not(:disabled) {
     border-color: var(--color-text-error);
+}
+
+.deleteButton {
+    margin-right: auto;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.removeButton:focus-visible,
+.deleteButton:focus-visible {
+    outline: 0.1875rem solid var(--color-focus);
+    outline-offset: 0.125rem;
 }
 
 .primaryButton:disabled,
 .secondaryButton:disabled,
-.removeButton:disabled {
+.removeButton:disabled,
+.deleteButton:disabled {
     cursor: not-allowed;
-
     opacity: 0.5;
 }
 
@@ -333,7 +340,12 @@
 
     .primaryButton,
     .secondaryButton,
-    .removeButton {
+    .removeButton,
+    .deleteButton {
         width: 100%;
+    }
+
+    .deleteButton {
+        margin-right: 0;
     }
 }

@@ -97,13 +97,15 @@ export const saveVacationHandover = async (
     };
   }
 
-  const canEdit =
-    absence.teamMemberId === currentUser.id || currentUser.role === "admin";
-
-  if (!canEdit) {
+  /*
+   * Ausschließlich der Beurlaubte darf sein
+   * Übergabeprotokoll erstellen oder bearbeiten.
+   */
+  if (absence.teamMemberId !== currentUser.id) {
     return {
       success: false,
-      error: "Du darfst diese Urlaubsübergabe nicht bearbeiten.",
+      error:
+        "Nur die Person, die in Urlaub geht, darf dieses Übergabeprotokoll bearbeiten.",
     };
   }
 
@@ -130,6 +132,11 @@ export const saveVacationHandover = async (
         },
       });
 
+      /*
+       * Bereits erledigte Aufgaben behalten ihren
+       * Status, wenn der Beurlaubte später noch das
+       * Protokoll bearbeitet.
+       */
       const completedTasksByTitle = new Map(
         existingHandover?.tasks.map((task) => [task.title, task.completed]) ??
           [],
@@ -239,6 +246,76 @@ export const saveVacationHandover = async (
   }
 };
 
+export const deleteVacationHandover = async (
+  absenceId: string,
+): Promise<ActionResult> => {
+  const currentUser = await getAuthenticatedTeamMember();
+
+  if (!currentUser) {
+    return {
+      success: false,
+      error: "Du bist nicht angemeldet.",
+    };
+  }
+
+  const absence = await prisma.absence.findUnique({
+    where: {
+      id: absenceId,
+    },
+
+    include: {
+      vacationHandover: true,
+    },
+  });
+
+  if (!absence || absence.type !== "vacation") {
+    return {
+      success: false,
+      error: "Der zugehörige Urlaub wurde nicht gefunden.",
+    };
+  }
+
+  /*
+   * Auch löschen darf ausschließlich
+   * der Beurlaubte selbst.
+   */
+  if (absence.teamMemberId !== currentUser.id) {
+    return {
+      success: false,
+      error:
+        "Nur die Person, die in Urlaub geht, darf dieses Übergabeprotokoll löschen.",
+    };
+  }
+
+  if (!absence.vacationHandover) {
+    return {
+      success: false,
+      error: "Es ist keine Urlaubsübergabe vorhanden.",
+    };
+  }
+
+  try {
+    await prisma.vacationHandover.delete({
+      where: {
+        absenceId,
+      },
+    });
+
+    revalidateHandoverPages(absenceId);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Failed to delete vacation handover:", error);
+
+    return {
+      success: false,
+      error: "Die Urlaubsübergabe konnte nicht gelöscht werden.",
+    };
+  }
+};
+
 export const setVacationHandoverTaskCompleted = async (
   taskId: string,
   completed: boolean,
@@ -281,15 +358,17 @@ export const setVacationHandoverTaskCompleted = async (
 
   const isOwner = absence.teamMemberId === currentUser.id;
 
-  const isAdmin = currentUser.role === "admin";
-
   const isSubstitute =
     absence.substitution?.substituteTeamMemberId === currentUser.id;
 
-  if (!isOwner && !isAdmin && !isSubstitute) {
+  /*
+   * Nur Urlauber und tatsächlich eingetragene
+   * Vertretung dürfen Aufgaben abhaken.
+   */
+  if (!isOwner && !isSubstitute) {
     return {
       success: false,
-      error: "Du darfst diese Aufgabe nicht ändern.",
+      error: "Du darfst den Status dieser Aufgabe nicht ändern.",
     };
   }
 

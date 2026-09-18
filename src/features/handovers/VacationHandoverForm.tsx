@@ -4,11 +4,13 @@ import { FormEvent, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import styles from "./VacationHandoverForm.module.css";
 import {
+  deleteVacationHandover,
   saveVacationHandover,
   setVacationHandoverTaskCompleted,
 } from "@/features/handovers/action";
+
+import styles from "./VacationHandoverForm.module.css";
 
 export interface VacationHandoverTaskValues {
   id?: string;
@@ -45,6 +47,7 @@ interface VacationHandoverFormProps {
 
   canEdit: boolean;
   canCompleteTasks: boolean;
+  hasHandover: boolean;
 
   vacationStartDate: string;
   vacationEndDate: string;
@@ -68,6 +71,7 @@ export const VacationHandoverForm = ({
   absenceId,
   canEdit,
   canCompleteTasks,
+  hasHandover,
   vacationStartDate,
   vacationEndDate,
   vacationerName,
@@ -80,6 +84,8 @@ export const VacationHandoverForm = ({
 
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [updatingTaskId, setUpdatingTaskId] = useState<string>();
 
   const [error, setError] = useState<string>();
@@ -90,6 +96,10 @@ export const VacationHandoverForm = ({
     field: keyof Omit<VacationHandoverValues, "tasks">,
     value: string,
   ) => {
+    if (!canEdit) {
+      return;
+    }
+
     setValues((current) => ({
       ...current,
       [field]: value,
@@ -115,7 +125,23 @@ export const VacationHandoverForm = ({
     }));
   };
 
+  const updateTaskContent = (
+    index: number,
+    field: "title" | "repoBranch" | "status" | "nextSteps" | "responsible",
+    value: string,
+  ) => {
+    if (!canEdit) {
+      return;
+    }
+
+    updateTask(index, field, value);
+  };
+
   const addTask = () => {
+    if (!canEdit) {
+      return;
+    }
+
     setValues((current) => ({
       ...current,
 
@@ -124,6 +150,10 @@ export const VacationHandoverForm = ({
   };
 
   const removeTask = (index: number) => {
+    if (!canEdit) {
+      return;
+    }
+
     setValues((current) => ({
       ...current,
 
@@ -162,6 +192,41 @@ export const VacationHandoverForm = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!canEdit || !hasHandover) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Möchtest du die komplette Urlaubsübergabe wirklich löschen? Alle enthaltenen Aufgaben werden ebenfalls gelöscht.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(undefined);
+    setSuccessMessage(undefined);
+    setIsDeleting(true);
+
+    try {
+      const result = await deleteVacationHandover(absenceId);
+
+      if (!result.success) {
+        setError(
+          result.error ?? "Die Urlaubsübergabe konnte nicht gelöscht werden.",
+        );
+
+        return;
+      }
+
+      router.push("/absences");
+      router.refresh();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleTaskCompletedChange = async (
     index: number,
     completed: boolean,
@@ -175,9 +240,6 @@ export const VacationHandoverForm = ({
     setError(undefined);
     setUpdatingTaskId(task.id);
 
-    /*
-     * Optimistisches Update.
-     */
     updateTask(index, "completed", completed);
 
     try {
@@ -198,6 +260,8 @@ export const VacationHandoverForm = ({
       setUpdatingTaskId(undefined);
     }
   };
+
+  const isBusy = isSaving || isDeleting;
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -225,8 +289,8 @@ export const VacationHandoverForm = ({
 
       {!canEdit ? (
         <div className={styles.readOnlyNotice}>
-          Du siehst diese Übergabe als eingetragene Vertretung. Das Protokoll
-          kann nur vom Urlauber bearbeitet werden. Offene Aufgaben kannst du als
+          Diese Urlaubsübergabe wurde vom Beurlaubten erstellt und kann von dir
+          nicht verändert werden. Du kannst ausschließlich offene Aufgaben als
           erledigt markieren.
         </div>
       ) : null}
@@ -246,7 +310,7 @@ export const VacationHandoverForm = ({
           <input
             id="emergencyContact"
             type="text"
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.emergencyContact}
             onChange={(event) =>
               updateValue("emergencyContact", event.target.value)
@@ -268,7 +332,7 @@ export const VacationHandoverForm = ({
             <button
               type="button"
               className={styles.secondaryButton}
-              disabled={isSaving}
+              disabled={isBusy}
               onClick={addTask}
             >
               + Aufgabe hinzufügen
@@ -313,7 +377,7 @@ export const VacationHandoverForm = ({
                     <button
                       type="button"
                       className={styles.removeButton}
-                      disabled={isSaving}
+                      disabled={isBusy}
                       onClick={() => removeTask(index)}
                     >
                       Entfernen
@@ -329,12 +393,11 @@ export const VacationHandoverForm = ({
                   <input
                     id={`task-title-${index}`}
                     type="text"
-                    disabled={!canEdit || isSaving}
+                    disabled={!canEdit || isBusy}
                     value={task.title}
                     onChange={(event) =>
-                      updateTask(index, "title", event.target.value)
+                      updateTaskContent(index, "title", event.target.value)
                     }
-                    placeholder="z. B. JIRA-1234 – Login Bug"
                   />
                 </div>
 
@@ -345,10 +408,14 @@ export const VacationHandoverForm = ({
                     <input
                       id={`task-repo-${index}`}
                       type="text"
-                      disabled={!canEdit || isSaving}
+                      disabled={!canEdit || isBusy}
                       value={task.repoBranch}
                       onChange={(event) =>
-                        updateTask(index, "repoBranch", event.target.value)
+                        updateTaskContent(
+                          index,
+                          "repoBranch",
+                          event.target.value,
+                        )
                       }
                     />
                   </div>
@@ -359,10 +426,10 @@ export const VacationHandoverForm = ({
                     <input
                       id={`task-status-${index}`}
                       type="text"
-                      disabled={!canEdit || isSaving}
+                      disabled={!canEdit || isBusy}
                       value={task.status}
                       onChange={(event) =>
-                        updateTask(index, "status", event.target.value)
+                        updateTaskContent(index, "status", event.target.value)
                       }
                     />
                   </div>
@@ -374,10 +441,10 @@ export const VacationHandoverForm = ({
                   <textarea
                     id={`task-next-${index}`}
                     rows={3}
-                    disabled={!canEdit || isSaving}
+                    disabled={!canEdit || isBusy}
                     value={task.nextSteps}
                     onChange={(event) =>
-                      updateTask(index, "nextSteps", event.target.value)
+                      updateTaskContent(index, "nextSteps", event.target.value)
                     }
                   />
                 </div>
@@ -388,10 +455,14 @@ export const VacationHandoverForm = ({
                   <input
                     id={`task-responsible-${index}`}
                     type="text"
-                    disabled={!canEdit || isSaving}
+                    disabled={!canEdit || isBusy}
                     value={task.responsible}
                     onChange={(event) =>
-                      updateTask(index, "responsible", event.target.value)
+                      updateTaskContent(
+                        index,
+                        "responsible",
+                        event.target.value,
+                      )
                     }
                   />
                 </div>
@@ -416,7 +487,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="featureBranches"
             rows={4}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.featureBranches}
             onChange={(event) =>
               updateValue("featureBranches", event.target.value)
@@ -430,7 +501,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="deploymentPlan"
             rows={4}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.deploymentPlan}
             onChange={(event) =>
               updateValue("deploymentPlan", event.target.value)
@@ -444,7 +515,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="cicdStatus"
             rows={4}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.cicdStatus}
             onChange={(event) => updateValue("cicdStatus", event.target.value)}
           />
@@ -456,7 +527,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="environments"
             rows={4}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.environments}
             onChange={(event) =>
               updateValue("environments", event.target.value)
@@ -480,7 +551,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="knownRisks"
             rows={5}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.knownRisks}
             onChange={(event) => updateValue("knownRisks", event.target.value)}
           />
@@ -492,7 +563,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="dependencies"
             rows={4}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.dependencies}
             onChange={(event) =>
               updateValue("dependencies", event.target.value)
@@ -518,7 +589,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="technicalDocumentation"
             rows={3}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.technicalDocumentation}
             onChange={(event) =>
               updateValue("technicalDocumentation", event.target.value)
@@ -532,7 +603,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="repositories"
             rows={3}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.repositories}
             onChange={(event) =>
               updateValue("repositories", event.target.value)
@@ -546,7 +617,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="tickets"
             rows={3}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.tickets}
             onChange={(event) => updateValue("tickets", event.target.value)}
           />
@@ -568,7 +639,7 @@ export const VacationHandoverForm = ({
           <textarea
             id="notes"
             rows={6}
-            disabled={!canEdit || isSaving}
+            disabled={!canEdit || isBusy}
             value={values.notes}
             onChange={(event) => updateValue("notes", event.target.value)}
           />
@@ -588,10 +659,21 @@ export const VacationHandoverForm = ({
       ) : null}
 
       <div className={styles.actions}>
+        {canEdit && hasHandover ? (
+          <button
+            type="button"
+            className={styles.deleteButton}
+            disabled={isBusy}
+            onClick={handleDelete}
+          >
+            {isDeleting ? "Löscht …" : "Übergabe löschen"}
+          </button>
+        ) : null}
+
         <button
           type="button"
           className={styles.secondaryButton}
-          disabled={isSaving}
+          disabled={isBusy}
           onClick={() => router.push("/absences")}
         >
           Zurück
@@ -601,9 +683,13 @@ export const VacationHandoverForm = ({
           <button
             type="submit"
             className={styles.primaryButton}
-            disabled={isSaving}
+            disabled={isBusy}
           >
-            {isSaving ? "Speichert …" : "Übergabe speichern"}
+            {isSaving
+              ? "Speichert …"
+              : hasHandover
+                ? "Änderungen speichern"
+                : "Übergabe erstellen"}
           </button>
         ) : null}
       </div>

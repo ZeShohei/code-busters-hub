@@ -76,21 +76,29 @@ export default async function VacationHandoverPage({
   const isSubstitute =
     absence.substitution?.substituteTeamMemberId === currentTeamMember.id;
 
-  if (!isOwner && !isAdmin && !isSubstitute) {
+  /*
+   * Zugriff:
+   *
+   * Urlauber -> lesen + bearbeiten
+   * Vertretung -> lesen + Aufgaben abhaken
+   * Admin -> nur lesen
+   */
+  if (!isOwner && !isSubstitute && !isAdmin) {
     notFound();
   }
 
   /*
-   * Nur Urlauber oder Admin dürfen
-   * das eigentliche Protokoll verändern.
+   * Ausschließlich der Beurlaubte selbst
+   * darf das Protokoll erstellen,
+   * bearbeiten und löschen.
    */
-  const canEdit = isOwner || isAdmin;
+  const canEdit = isOwner;
 
   /*
-   * Die Vertretung darf Aufgaben abhaken.
-   * Urlauber/Admin dürfen das ebenfalls.
+   * Die Vertretung darf zusätzlich
+   * Aufgaben abhaken.
    */
-  const canCompleteTasks = isOwner || isAdmin || isSubstitute;
+  const canCompleteTasks = isOwner || isSubstitute;
 
   const handover = absence.vacationHandover;
 
@@ -116,9 +124,9 @@ export default async function VacationHandoverPage({
         eyebrow="Urlaubsübergabe"
         title={`Übergabe für ${absence.teamMember.displayName}`}
         description={
-          canEdit
+          isOwner
             ? "Halte alle wichtigen Aufgaben, Themen und Hinweise für deine Vertretung fest."
-            : "Hier findest du das Übergabeprotokoll für deine Urlaubsvertretung."
+            : "Hier findest du das Übergabeprotokoll für die Urlaubsvertretung."
         }
       />
 
@@ -126,6 +134,7 @@ export default async function VacationHandoverPage({
         absenceId={absence.id}
         canEdit={canEdit}
         canCompleteTasks={canCompleteTasks}
+        hasHandover={Boolean(handover)}
         vacationerName={absence.teamMember.displayName}
         vacationStartDate={formatDate(
           absence.startDate.toISOString().slice(0, 10),
@@ -158,6 +167,7 @@ export default async function VacationHandoverPage({
           tasks:
             handover?.tasks.map((task) => ({
               id: task.id,
+
               title: task.title,
 
               repoBranch: task.repoBranch ?? "",
