@@ -83,7 +83,8 @@ model Absence {
   endDate   DateTime @db.Date
   type      AbsenceType
 
-  substitution Substitution?
+  substitution     Substitution?
+  vacationHandover VacationHandover?
 
   createdAt DateTime @default(now())
 }
@@ -98,6 +99,54 @@ model Substitution {
   substituteTeamMember   TeamMember @relation("SubstituteTeamMember", fields: [substituteTeamMemberId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+model VacationHandover {
+  id String @id @default(uuid())
+
+  absenceId String  @unique
+  absence   Absence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
+
+  emergencyContact String?
+
+  featureBranches String?
+  deploymentPlan   String?
+  cicdStatus       String?
+  environments     String?
+
+  knownRisks   String?
+  dependencies String?
+
+  technicalDocumentation String?
+  repositories            String?
+  tickets                 String?
+
+  notes String?
+
+  tasks VacationHandoverTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VacationHandoverTask {
+  id String @id @default(uuid())
+
+  vacationHandoverId String
+  vacationHandover   VacationHandover @relation(fields: [vacationHandoverId], references: [id], onDelete: Cascade)
+
+  title       String
+  repoBranch  String?
+  status      String?
+  nextSteps   String?
+  responsible String?
+
+  position Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vacationHandoverId])
 }
 
 model RotationConfig {
