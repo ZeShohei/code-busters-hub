@@ -141,6 +141,8 @@ model VacationHandoverTask {
   nextSteps   String?
   responsible String?
 
+  completed Boolean @default(false)
+
   position Int @default(0)
 
   createdAt DateTime @default(now())

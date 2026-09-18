@@ -102,7 +102,7 @@
     font-weight: 600;
 }
 
-.field input,
+.field input:not([type="checkbox"]),
 .field textarea {
     width: 100%;
 
@@ -117,16 +117,18 @@
     resize: vertical;
 }
 
-.field input:focus,
+.field input:not([type="checkbox"]):focus,
 .field textarea:focus {
     border-color: var(--color-brand-primary);
 
     outline: none;
 
-    box-shadow: 0 0 0 0.1875rem var(--color-brand-focus-ring);
+    box-shadow:
+            0 0 0 0.1875rem
+            var(--color-brand-focus-ring);
 }
 
-.field input:disabled,
+.field input:not([type="checkbox"]):disabled,
 .field textarea:disabled {
     border-color: var(--color-border-subtle);
 
@@ -155,6 +157,19 @@
     border-radius: var(--radius-md);
 
     background: var(--color-background-subtle);
+
+    transition:
+            opacity 0.15s ease,
+            border-color 0.15s ease;
+}
+
+.taskCompleted {
+    opacity: 0.7;
+}
+
+.taskCompleted .field input,
+.taskCompleted .field textarea {
+    text-decoration: none;
 }
 
 .taskHeader {
@@ -164,8 +179,32 @@
     gap: 1rem;
 }
 
-.taskHeader strong {
+.checkboxLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+
     color: var(--color-text-primary);
+
+    font-size: 0.875rem;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.checkbox {
+    width: 1.125rem;
+    height: 1.125rem;
+
+    margin: 0;
+
+    accent-color: var(--color-brand-primary);
+
+    cursor: pointer;
+}
+
+.checkbox:disabled {
+    cursor: not-allowed;
 }
 
 .taskGrid {

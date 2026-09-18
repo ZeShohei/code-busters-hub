@@ -17,6 +17,7 @@ interface VacationHandoverPageProps {
     id: string;
   }>;
 }
+
 export default async function VacationHandoverPage({
   params,
 }: VacationHandoverPageProps) {
@@ -79,7 +80,18 @@ export default async function VacationHandoverPage({
     notFound();
   }
 
+  /*
+   * Nur Urlauber oder Admin dürfen
+   * das eigentliche Protokoll verändern.
+   */
   const canEdit = isOwner || isAdmin;
+
+  /*
+   * Die Vertretung darf Aufgaben abhaken.
+   * Urlauber/Admin dürfen das ebenfalls.
+   */
+  const canCompleteTasks = isOwner || isAdmin || isSubstitute;
+
   const handover = absence.vacationHandover;
 
   return (
@@ -106,13 +118,14 @@ export default async function VacationHandoverPage({
         description={
           canEdit
             ? "Halte alle wichtigen Aufgaben, Themen und Hinweise für deine Vertretung fest."
-            : "Hier findest du alle Informationen, die für die Urlaubsvertretung wichtig sind."
+            : "Hier findest du das Übergabeprotokoll für deine Urlaubsvertretung."
         }
       />
 
       <VacationHandoverForm
         absenceId={absence.id}
         canEdit={canEdit}
+        canCompleteTasks={canCompleteTasks}
         vacationerName={absence.teamMember.displayName}
         vacationStartDate={formatDate(
           absence.startDate.toISOString().slice(0, 10),
@@ -146,10 +159,16 @@ export default async function VacationHandoverPage({
             handover?.tasks.map((task) => ({
               id: task.id,
               title: task.title,
+
               repoBranch: task.repoBranch ?? "",
+
               status: task.status ?? "",
+
               nextSteps: task.nextSteps ?? "",
+
               responsible: task.responsible ?? "",
+
+              completed: task.completed,
             })) ?? [],
         }}
       />

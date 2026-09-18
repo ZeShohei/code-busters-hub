@@ -11,6 +11,7 @@ interface VacationHandoverTaskInput {
   status: string;
   nextSteps: string;
   responsible: string;
+  completed: boolean;
 }
 
 interface SaveVacationHandoverInput {
@@ -64,6 +65,12 @@ const getAuthenticatedTeamMember = async () => {
   return teamMember;
 };
 
+const revalidateHandoverPages = (absenceId: string) => {
+  revalidatePath("/");
+  revalidatePath("/absences");
+  revalidatePath(`/absences/${absenceId}/handover`);
+};
+
 export const saveVacationHandover = async (
   absenceId: string,
   input: SaveVacationHandoverInput,
@@ -107,11 +114,27 @@ export const saveVacationHandover = async (
       status: task.status.trim(),
       nextSteps: task.nextSteps.trim(),
       responsible: task.responsible.trim(),
+      completed: task.completed,
     }))
     .filter((task) => task.title.length > 0);
 
   try {
     await prisma.$transaction(async (transaction) => {
+      const existingHandover = await transaction.vacationHandover.findUnique({
+        where: {
+          absenceId,
+        },
+
+        include: {
+          tasks: true,
+        },
+      });
+
+      const completedTasksByTitle = new Map(
+        existingHandover?.tasks.map((task) => [task.title, task.completed]) ??
+          [],
+      );
+
       const handover = await transaction.vacationHandover.upsert({
         where: {
           absenceId,
@@ -121,17 +144,23 @@ export const saveVacationHandover = async (
           emergencyContact: normalizeOptionalValue(input.emergencyContact),
 
           featureBranches: normalizeOptionalValue(input.featureBranches),
+
           deploymentPlan: normalizeOptionalValue(input.deploymentPlan),
+
           cicdStatus: normalizeOptionalValue(input.cicdStatus),
+
           environments: normalizeOptionalValue(input.environments),
 
           knownRisks: normalizeOptionalValue(input.knownRisks),
+
           dependencies: normalizeOptionalValue(input.dependencies),
 
           technicalDocumentation: normalizeOptionalValue(
             input.technicalDocumentation,
           ),
+
           repositories: normalizeOptionalValue(input.repositories),
+
           tickets: normalizeOptionalValue(input.tickets),
 
           notes: normalizeOptionalValue(input.notes),
@@ -143,17 +172,23 @@ export const saveVacationHandover = async (
           emergencyContact: normalizeOptionalValue(input.emergencyContact),
 
           featureBranches: normalizeOptionalValue(input.featureBranches),
+
           deploymentPlan: normalizeOptionalValue(input.deploymentPlan),
+
           cicdStatus: normalizeOptionalValue(input.cicdStatus),
+
           environments: normalizeOptionalValue(input.environments),
 
           knownRisks: normalizeOptionalValue(input.knownRisks),
+
           dependencies: normalizeOptionalValue(input.dependencies),
 
           technicalDocumentation: normalizeOptionalValue(
             input.technicalDocumentation,
           ),
+
           repositories: normalizeOptionalValue(input.repositories),
+
           tickets: normalizeOptionalValue(input.tickets),
 
           notes: normalizeOptionalValue(input.notes),
@@ -170,20 +205,26 @@ export const saveVacationHandover = async (
         await transaction.vacationHandoverTask.createMany({
           data: tasks.map((task, index) => ({
             vacationHandoverId: handover.id,
+
             title: task.title,
+
             repoBranch: normalizeOptionalValue(task.repoBranch),
+
             status: normalizeOptionalValue(task.status),
+
             nextSteps: normalizeOptionalValue(task.nextSteps),
+
             responsible: normalizeOptionalValue(task.responsible),
+
+            completed: completedTasksByTitle.get(task.title) ?? task.completed,
+
             position: index,
           })),
         });
       }
     });
 
-    revalidatePath("/");
-    revalidatePath("/absences");
-    revalidatePath(`/absences/${absenceId}/handover`);
+    revalidateHandoverPages(absenceId);
 
     return {
       success: true,
@@ -194,6 +235,86 @@ export const saveVacationHandover = async (
     return {
       success: false,
       error: "Die Urlaubsübergabe konnte nicht gespeichert werden.",
+    };
+  }
+};
+
+export const setVacationHandoverTaskCompleted = async (
+  taskId: string,
+  completed: boolean,
+): Promise<ActionResult> => {
+  const currentUser = await getAuthenticatedTeamMember();
+
+  if (!currentUser) {
+    return {
+      success: false,
+      error: "Du bist nicht angemeldet.",
+    };
+  }
+
+  const task = await prisma.vacationHandoverTask.findUnique({
+    where: {
+      id: taskId,
+    },
+
+    include: {
+      vacationHandover: {
+        include: {
+          absence: {
+            include: {
+              substitution: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!task) {
+    return {
+      success: false,
+      error: "Die Aufgabe wurde nicht gefunden.",
+    };
+  }
+
+  const absence = task.vacationHandover.absence;
+
+  const isOwner = absence.teamMemberId === currentUser.id;
+
+  const isAdmin = currentUser.role === "admin";
+
+  const isSubstitute =
+    absence.substitution?.substituteTeamMemberId === currentUser.id;
+
+  if (!isOwner && !isAdmin && !isSubstitute) {
+    return {
+      success: false,
+      error: "Du darfst diese Aufgabe nicht ändern.",
+    };
+  }
+
+  try {
+    await prisma.vacationHandoverTask.update({
+      where: {
+        id: task.id,
+      },
+
+      data: {
+        completed,
+      },
+    });
+
+    revalidateHandoverPages(absence.id);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Failed to update vacation handover task:", error);
+
+    return {
+      success: false,
+      error: "Der Aufgabenstatus konnte nicht gespeichert werden.",
     };
   }
 };

@@ -5,7 +5,10 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./VacationHandoverForm.module.css";
-import { saveVacationHandover } from "@/features/handovers/action";
+import {
+  saveVacationHandover,
+  setVacationHandoverTaskCompleted,
+} from "@/features/handovers/action";
 
 export interface VacationHandoverTaskValues {
   id?: string;
@@ -14,6 +17,7 @@ export interface VacationHandoverTaskValues {
   status: string;
   nextSteps: string;
   responsible: string;
+  completed: boolean;
 }
 
 export interface VacationHandoverValues {
@@ -38,7 +42,9 @@ export interface VacationHandoverValues {
 
 interface VacationHandoverFormProps {
   absenceId: string;
+
   canEdit: boolean;
+  canCompleteTasks: boolean;
 
   vacationStartDate: string;
   vacationEndDate: string;
@@ -55,11 +61,13 @@ const createEmptyTask = (): VacationHandoverTaskValues => ({
   status: "",
   nextSteps: "",
   responsible: "",
+  completed: false,
 });
 
 export const VacationHandoverForm = ({
   absenceId,
   canEdit,
+  canCompleteTasks,
   vacationStartDate,
   vacationEndDate,
   vacationerName,
@@ -71,7 +79,11 @@ export const VacationHandoverForm = ({
   const [values, setValues] = useState<VacationHandoverValues>(initialValues);
 
   const [isSaving, setIsSaving] = useState(false);
+
+  const [updatingTaskId, setUpdatingTaskId] = useState<string>();
+
   const [error, setError] = useState<string>();
+
   const [successMessage, setSuccessMessage] = useState<string>();
 
   const updateValue = (
@@ -87,7 +99,7 @@ export const VacationHandoverForm = ({
   const updateTask = (
     index: number,
     field: keyof VacationHandoverTaskValues,
-    value: string,
+    value: string | boolean,
   ) => {
     setValues((current) => ({
       ...current,
@@ -106,6 +118,7 @@ export const VacationHandoverForm = ({
   const addTask = () => {
     setValues((current) => ({
       ...current,
+
       tasks: [...current.tasks, createEmptyTask()],
     }));
   };
@@ -149,6 +162,43 @@ export const VacationHandoverForm = ({
     }
   };
 
+  const handleTaskCompletedChange = async (
+    index: number,
+    completed: boolean,
+  ) => {
+    const task = values.tasks[index];
+
+    if (!task.id || !canCompleteTasks) {
+      return;
+    }
+
+    setError(undefined);
+    setUpdatingTaskId(task.id);
+
+    /*
+     * Optimistisches Update.
+     */
+    updateTask(index, "completed", completed);
+
+    try {
+      const result = await setVacationHandoverTaskCompleted(task.id, completed);
+
+      if (!result.success) {
+        updateTask(index, "completed", !completed);
+
+        setError(
+          result.error ?? "Der Aufgabenstatus konnte nicht gespeichert werden.",
+        );
+
+        return;
+      }
+
+      router.refresh();
+    } finally {
+      setUpdatingTaskId(undefined);
+    }
+  };
+
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <section className={styles.summary}>
@@ -175,8 +225,9 @@ export const VacationHandoverForm = ({
 
       {!canEdit ? (
         <div className={styles.readOnlyNotice}>
-          Du siehst diese Übergabe als eingetragene Vertretung. Änderungen
-          können nur vom Urlauber oder einem Admin vorgenommen werden.
+          Du siehst diese Übergabe als eingetragene Vertretung. Das Protokoll
+          kann nur vom Urlauber bearbeitet werden. Offene Aufgaben kannst du als
+          erledigt markieren.
         </div>
       ) : null}
 
@@ -210,10 +261,7 @@ export const VacationHandoverForm = ({
           <div>
             <h2>Offene Aufgaben</h2>
 
-            <p>
-              Tickets und Aufgaben, die während des Urlaubs relevant sein
-              können.
-            </p>
+            <p>Aufgaben und Tickets für die Vertretung.</p>
           </div>
 
           {canEdit ? (
@@ -233,9 +281,33 @@ export const VacationHandoverForm = ({
         ) : (
           <div className={styles.tasks}>
             {values.tasks.map((task, index) => (
-              <article key={task.id ?? `new-${index}`} className={styles.task}>
+              <article
+                key={task.id ?? `new-${index}`}
+                className={`${styles.task} ${
+                  task.completed ? styles.taskCompleted : ""
+                }`}
+              >
                 <div className={styles.taskHeader}>
-                  <strong>Aufgabe {index + 1}</strong>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={task.completed}
+                      disabled={
+                        !canCompleteTasks ||
+                        !task.id ||
+                        updatingTaskId === task.id
+                      }
+                      onChange={(event) =>
+                        void handleTaskCompletedChange(
+                          index,
+                          event.target.checked,
+                        )
+                      }
+                    />
+
+                    <span>{task.completed ? "Erledigt" : "Offen"}</span>
+                  </label>
 
                   {canEdit ? (
                     <button
@@ -278,7 +350,6 @@ export const VacationHandoverForm = ({
                       onChange={(event) =>
                         updateTask(index, "repoBranch", event.target.value)
                       }
-                      placeholder="we-website-theme/feature/..."
                     />
                   </div>
 
@@ -293,7 +364,6 @@ export const VacationHandoverForm = ({
                       onChange={(event) =>
                         updateTask(index, "status", event.target.value)
                       }
-                      placeholder="z. B. In Progress"
                     />
                   </div>
                 </div>
@@ -309,7 +379,6 @@ export const VacationHandoverForm = ({
                     onChange={(event) =>
                       updateTask(index, "nextSteps", event.target.value)
                     }
-                    placeholder="Was muss als Nächstes passieren?"
                   />
                 </div>
 
@@ -324,7 +393,6 @@ export const VacationHandoverForm = ({
                     onChange={(event) =>
                       updateTask(index, "responsible", event.target.value)
                     }
-                    placeholder="Name oder Team"
                   />
                 </div>
               </article>
@@ -338,10 +406,7 @@ export const VacationHandoverForm = ({
           <div>
             <h2>Laufende Themen</h2>
 
-            <p>
-              Entwicklungs-, Deployment- und Infrastrukturthemen, die während
-              des Urlaubs wichtig sind.
-            </p>
+            <p>Entwicklungs-, Deployment- und Infrastrukturthemen.</p>
           </div>
         </div>
 
@@ -356,7 +421,6 @@ export const VacationHandoverForm = ({
             onChange={(event) =>
               updateValue("featureBranches", event.target.value)
             }
-            placeholder="Welche Branches oder Pull Requests sind offen?"
           />
         </div>
 
@@ -371,7 +435,6 @@ export const VacationHandoverForm = ({
             onChange={(event) =>
               updateValue("deploymentPlan", event.target.value)
             }
-            placeholder="Letzter Merge, nächster geplanter Release, Besonderheiten ..."
           />
         </div>
 
@@ -384,7 +447,6 @@ export const VacationHandoverForm = ({
             disabled={!canEdit || isSaving}
             value={values.cicdStatus}
             onChange={(event) => updateValue("cicdStatus", event.target.value)}
-            placeholder="Pipeline-Status und bekannte Probleme"
           />
         </div>
 
@@ -399,7 +461,6 @@ export const VacationHandoverForm = ({
             onChange={(event) =>
               updateValue("environments", event.target.value)
             }
-            placeholder="Staging, Testsysteme, Versionen, Besonderheiten ..."
           />
         </div>
       </section>
@@ -409,10 +470,7 @@ export const VacationHandoverForm = ({
           <div>
             <h2>Bekannte Risiken / Probleme</h2>
 
-            <p>
-              Bugs, instabile Systeme und Abhängigkeiten, die bekannt sein
-              sollten.
-            </p>
+            <p>Bugs, instabile Systeme und Abhängigkeiten.</p>
           </div>
         </div>
 
@@ -439,7 +497,6 @@ export const VacationHandoverForm = ({
             onChange={(event) =>
               updateValue("dependencies", event.target.value)
             }
-            placeholder="Andere Teams, externe Systeme oder Ansprechpartner"
           />
         </div>
       </section>
@@ -449,7 +506,7 @@ export const VacationHandoverForm = ({
           <div>
             <h2>Dokumentation & Links</h2>
 
-            <p>Wichtige technische Dokumentation, Repositories und Tickets.</p>
+            <p>Technische Dokumentation, Repositories und Tickets.</p>
           </div>
         </div>
 
@@ -466,7 +523,6 @@ export const VacationHandoverForm = ({
             onChange={(event) =>
               updateValue("technicalDocumentation", event.target.value)
             }
-            placeholder="Confluence, technische Doku ..."
           />
         </div>
 
@@ -481,7 +537,6 @@ export const VacationHandoverForm = ({
             onChange={(event) =>
               updateValue("repositories", event.target.value)
             }
-            placeholder="GitHub- oder GitLab-Links"
           />
         </div>
 
@@ -494,7 +549,6 @@ export const VacationHandoverForm = ({
             disabled={!canEdit || isSaving}
             value={values.tickets}
             onChange={(event) => updateValue("tickets", event.target.value)}
-            placeholder="Jira-Board, relevante Filter oder Tickets"
           />
         </div>
       </section>
@@ -504,7 +558,7 @@ export const VacationHandoverForm = ({
           <div>
             <h2>Sonstiges / Hinweise</h2>
 
-            <p>Alles, was sonst noch für die Vertretung wichtig ist.</p>
+            <p>Weitere wichtige Informationen für die Vertretung.</p>
           </div>
         </div>
 
