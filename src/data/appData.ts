@@ -1,346 +1,396 @@
+import "server-only";
+
+import { generateRotations } from "@/features/rotations/utils";
+import { prisma } from "@/lib/prisma";
+
 import type {
   Absence,
+  DeploymentException,
   RotationAssignment,
-  RotationResolution,
+  RotationConfig,
   Substitution,
   TeamMember,
 } from "@/types/team";
 
-/*
- * T2 ist bewusst KEIN TeamMember in unserer Datenbank.
- *
- * Für die generierte Rotation verwenden wir lediglich
- * eine stabile technische ID.
- */
-export const T2_TEAM_ROTATION_ID = "__t2-team__";
-
-export const T2_TEAM_NAME = "T2 Team";
-
-export const isT2TeamRotation = (rotation: RotationAssignment) => {
-  return (
-    rotation.type === "deployment" &&
-    rotation.teamMemberId === T2_TEAM_ROTATION_ID
-  );
+const toDateString = (date: Date) => {
+  return date.toISOString().slice(0, 10);
 };
 
-export const getRotationAssigneeName = (
-  teamMemberId: string,
-  teamMembers: TeamMember[],
-) => {
-  if (teamMemberId === T2_TEAM_ROTATION_ID) {
-    return T2_TEAM_NAME;
-  }
+export const getAppData = async () => {
+  const [
+    teamMemberRows,
+    absenceRows,
+    substitutionRows,
+    rotationConfigRows,
+    deploymentExceptionRows,
+  ] = await Promise.all([
+    prisma.teamMember.findMany({
+      orderBy: {
+        displayName: "asc",
+      },
+    }),
 
-  return (
-    teamMembers.find((member) => member.id === teamMemberId)?.displayName ??
-    "Unbekannt"
-  );
-};
+    prisma.absence.findMany({
+      orderBy: {
+        startDate: "asc",
+      },
+    }),
 
-const rangesOverlap = (
-  firstStartDate: string,
-  firstEndDate: string,
-  secondStartDate: string,
-  secondEndDate: string,
-) => {
-  return firstStartDate <= secondEndDate && secondStartDate <= firstEndDate;
-};
+    prisma.substitution.findMany({
+      include: {
+        absence: true,
+      },
 
-export const getRotationAbsence = (
-  rotation: RotationAssignment,
-  absences: Absence[],
-) => {
+      orderBy: {
+        absence: {
+          startDate: "asc",
+        },
+      },
+    }),
+
+    prisma.rotationConfig.findMany({
+      include: {
+        participants: {
+          orderBy: {
+            position: "asc",
+          },
+        },
+      },
+
+      orderBy: {
+        startDate: "asc",
+      },
+    }),
+
+    prisma.deploymentException.findMany({
+      orderBy: {
+        deploymentDate: "asc",
+      },
+    }),
+  ]);
+
   /*
-   * T2 ist kein eigenes Teammitglied und besitzt
-   * daher auch keine Abwesenheiten innerhalb
-   * unseres Systems.
+   * Team
    */
-  if (isT2TeamRotation(rotation)) {
-    return undefined;
-  }
 
-  return absences.find(
-    (absence) =>
-      absence.teamMemberId === rotation.teamMemberId &&
-      rangesOverlap(
-        rotation.startDate,
-        rotation.endDate,
-        absence.startDate,
-        absence.endDate,
-      ),
-  );
-};
+  const teamMembers: TeamMember[] = teamMemberRows.map((member) => ({
+    id: member.id,
+    firstName: member.firstName,
+    lastName: member.lastName,
+    displayName: member.displayName,
+    email: member.email,
+    username: member.username,
+    active: member.active,
+    role: member.role,
+  }));
 
-export const getRotationSubstitution = (
-  rotation: RotationAssignment,
-  absences: Absence[],
-  substitutions: Substitution[],
-) => {
-  const absence = getRotationAbsence(rotation, absences);
+  /*
+   * Abwesenheiten
+   */
 
-  if (!absence) {
-    return undefined;
-  }
+  const absences: Absence[] = absenceRows.map((absence) => ({
+    id: absence.id,
 
-  return substitutions.find(
-    (substitution) => substitution.absenceId === absence.id,
-  );
-};
+    teamMemberId: absence.teamMemberId,
 
-export const getEffectiveRotationTeamMemberId = (
-  rotation: RotationAssignment,
-  absences: Absence[],
-  substitutions: Substitution[],
-) => {
-  const absence = getRotationAbsence(rotation, absences);
+    startDate: toDateString(absence.startDate),
 
-  if (!absence) {
-    return rotation.teamMemberId;
-  }
+    endDate: toDateString(absence.endDate),
 
-  const substitution = substitutions.find(
-    (item) => item.absenceId === absence.id,
-  );
+    type: absence.type,
+  }));
 
-  return substitution?.substituteTeamMemberId ?? rotation.teamMemberId;
-};
+  /*
+   * Vertretungen
+   */
 
-export const resolveRotation = (
-  rotation: RotationAssignment,
-  absences: Absence[],
-  substitutions: Substitution[],
-): RotationResolution => {
-  const absence = getRotationAbsence(rotation, absences);
+  const substitutions: Substitution[] = substitutionRows.map(
+    (substitution) => ({
+      id: substitution.id,
 
-  if (!absence) {
-    return {
-      status: "regular",
-      assignedTeamMemberId: rotation.teamMemberId,
-      effectiveTeamMemberId: rotation.teamMemberId,
-    };
-  }
+      absenceId: substitution.absenceId,
 
-  const substitution = substitutions.find(
-    (item) => item.absenceId === absence.id,
+      teamMemberId: substitution.absence.teamMemberId,
+
+      substituteTeamMemberId: substitution.substituteTeamMemberId,
+
+      startDate: toDateString(substitution.absence.startDate),
+
+      endDate: toDateString(substitution.absence.endDate),
+    }),
   );
 
-  if (!substitution) {
-    return {
-      status: "uncovered",
-      assignedTeamMemberId: rotation.teamMemberId,
-      effectiveTeamMemberId: rotation.teamMemberId,
-    };
-  }
+  /*
+   * Deployment-Ausnahmen
+   */
 
-  return {
-    status: "substitution",
-    assignedTeamMemberId: rotation.teamMemberId,
-    effectiveTeamMemberId: substitution.substituteTeamMemberId,
+  const deploymentExceptions: DeploymentException[] =
+    deploymentExceptionRows.map((exception) => ({
+      id: exception.id,
+
+      type: exception.type,
+
+      originalDate: exception.originalDate
+        ? toDateString(exception.originalDate)
+        : null,
+
+      deploymentDate: toDateString(exception.deploymentDate),
+
+      teamMemberId: exception.teamMemberId,
+
+      reason: exception.reason,
+    }));
+
+  /*
+   * RotationConfigs aus Prisma in unsere
+   * Frontend-/Domain-Typen überführen.
+   */
+
+  const mapRotationConfigs = (
+    type: RotationAssignment["type"],
+  ): RotationConfig[] => {
+    return rotationConfigRows
+      .filter((config) => config.type === type)
+      .sort(
+        (first, second) =>
+          first.startDate.getTime() - second.startDate.getTime(),
+      )
+      .map((config) => ({
+        participantTeamMemberIds: config.participants.map(
+          (participant) => participant.teamMemberId,
+        ),
+
+        startDate: toDateString(config.startDate),
+
+        numberOfWeeks: config.numberOfWeeks,
+
+        startIndex: config.startIndex,
+
+        type,
+
+        deploymentStartsWithT2:
+          type === "deployment" ? config.deploymentStartsWithT2 : false,
+      }));
   };
-};
 
-const parseDate = (dateString: string) => {
-  const [year, month, day] = dateString.split("-").map(Number);
+  const dispatcherConfigs = mapRotationConfigs("dispatcher");
 
-  return new Date(year, month - 1, day);
-};
-
-const formatDate = (date: Date) => {
-  const year = date.getFullYear();
-
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
-
-const addDays = (date: Date, amount: number) => {
-  const result = new Date(date);
-
-  result.setDate(result.getDate() + amount);
-
-  return result;
-};
-
-const getMonday = (date: Date) => {
-  const result = new Date(date);
-
-  const day = result.getDay();
-
-  const diff = day === 0 ? -6 : 1 - day;
-
-  result.setDate(result.getDate() + diff);
-
-  return result;
-};
-
-const getThursdayOnOrAfter = (date: Date) => {
-  const result = new Date(date);
-
-  const currentDay = result.getDay();
-
-  const thursday = 4;
-
-  const daysUntilThursday = (thursday - currentDay + 7) % 7;
-
-  result.setDate(result.getDate() + daysUntilThursday);
-
-  return result;
-};
-
-interface GenerateRotationsOptions {
-  teamMembers: TeamMember[];
-  startDate: string;
-  numberOfWeeks: number;
-  type: RotationAssignment["type"];
-  startIndex?: number;
-
-  deploymentStartsWithT2?: boolean;
-}
-
-interface GenerateTypedRotationsOptions {
-  teamMembers: TeamMember[];
-  startDate: string;
-  numberOfWeeks: number;
-  startIndex: number;
-
-  deploymentStartsWithT2: boolean;
-}
-
-const generateDispatcherRotations = ({
-  teamMembers,
-  startDate,
-  numberOfWeeks,
-  startIndex,
-}: GenerateTypedRotationsOptions): RotationAssignment[] => {
-  const firstMonday = getMonday(parseDate(startDate));
-
-  return Array.from(
-    {
-      length: numberOfWeeks,
-    },
-    (_, weekIndex) => {
-      const rotationStartDate = addDays(firstMonday, weekIndex * 7);
-
-      const rotationEndDate = addDays(rotationStartDate, 6);
-
-      const teamMemberIndex = (startIndex + weekIndex) % teamMembers.length;
-
-      const teamMember = teamMembers[teamMemberIndex];
-
-      const startDateString = formatDate(rotationStartDate);
-
-      return {
-        id: `dispatcher-${startDateString}-${teamMember.id}`,
-        teamMemberId: teamMember.id,
-        startDate: startDateString,
-        endDate: formatDate(rotationEndDate),
-        type: "dispatcher",
-      };
-    },
-  );
-};
-
-const generateDeploymentRotations = ({
-  teamMembers,
-  startDate,
-  numberOfWeeks,
-  startIndex,
-  deploymentStartsWithT2,
-}: GenerateTypedRotationsOptions): RotationAssignment[] => {
-  const configStartDate = parseDate(startDate);
-
-  const endExclusive = addDays(configStartDate, numberOfWeeks * 7);
-
-  const firstDeploymentDate = getThursdayOnOrAfter(configStartDate);
-
-  const rotations: RotationAssignment[] = [];
-
-  let deploymentDate = firstDeploymentDate;
+  const deploymentConfigs = mapRotationConfigs("deployment");
 
   /*
-   * Index aller Deployment-Slots.
+   * Mehrere historische Rotationskonfigurationen
+   * werden hintereinander angewendet.
    *
-   * Jeder Slot liegt 14 Tage auseinander.
+   * Sobald eine neue Konfiguration beginnt,
+   * endet die vorherige Version.
    */
-  let deploymentSlotIndex = 0;
+
+  const generateVersionedRotations = (
+    configs: RotationConfig[],
+  ): RotationAssignment[] => {
+    return configs.flatMap((config, index) => {
+      const nextConfig = configs[index + 1];
+
+      const participants = config.participantTeamMemberIds
+        .map((id) => teamMembers.find((member) => member.id === id))
+        .filter((member): member is TeamMember => member !== undefined);
+
+      const rotations = generateRotations({
+        teamMembers: participants,
+
+        startDate: config.startDate,
+
+        numberOfWeeks: config.numberOfWeeks,
+
+        type: config.type,
+
+        startIndex: config.startIndex,
+
+        deploymentStartsWithT2: config.deploymentStartsWithT2,
+      });
+
+      if (!nextConfig) {
+        return rotations;
+      }
+
+      return rotations.filter(
+        (rotation) => rotation.startDate < nextConfig.startDate,
+      );
+    });
+  };
 
   /*
-   * Dieser Index wird NUR erhöht,
-   * wenn Code Busters tatsächlich
-   * an der Reihe ist.
-   *
-   * Ein T2-Slot verbraucht also
-   * keinen TeamMember.
+   * Aktuellste Konfiguration für die Admin-Formulare.
    */
-  let internalDeploymentIndex = 0;
 
-  while (deploymentDate < endExclusive) {
-    const date = formatDate(deploymentDate);
+  const getLatestConfig = (
+    configs: RotationConfig[],
+    type: RotationAssignment["type"],
+  ): RotationConfig => {
+    const config = configs[configs.length - 1];
 
-    const isT2Slot = deploymentStartsWithT2
-      ? deploymentSlotIndex % 2 === 0
-      : deploymentSlotIndex % 2 === 1;
-
-    if (isT2Slot) {
-      rotations.push({
-        id: `deployment-${date}-t2`,
-        teamMemberId: T2_TEAM_ROTATION_ID,
-        startDate: date,
-        endDate: date,
-        type: "deployment",
-        deploymentKind: "regular",
-      });
-    } else {
-      const teamMemberIndex =
-        (startIndex + internalDeploymentIndex) % teamMembers.length;
-
-      const teamMember = teamMembers[teamMemberIndex];
-
-      rotations.push({
-        id: `deployment-${date}-${teamMember.id}`,
-        teamMemberId: teamMember.id,
-        startDate: date,
-        endDate: date,
-        type: "deployment",
-        deploymentKind: "regular",
-      });
-
-      internalDeploymentIndex += 1;
+    if (config) {
+      return config;
     }
 
-    deploymentDate = addDays(deploymentDate, 14);
-
-    deploymentSlotIndex += 1;
-  }
-
-  return rotations;
-};
-
-export const generateRotations = ({
-  teamMembers,
-  startDate,
-  numberOfWeeks,
-  type,
-  startIndex = 0,
-  deploymentStartsWithT2 = false,
-}: GenerateRotationsOptions): RotationAssignment[] => {
-  if (teamMembers.length === 0 || numberOfWeeks <= 0) {
-    return [];
-  }
-
-  const generatorOptions: GenerateTypedRotationsOptions = {
-    teamMembers,
-    startDate,
-    numberOfWeeks,
-    startIndex,
-    deploymentStartsWithT2,
+    /*
+     * Fallback, falls für einen Rotationstyp noch keine
+     * Konfiguration in der Datenbank existiert.
+     *
+     * Dadurch stürzt die gesamte App nicht ab.
+     */
+    return {
+      participantTeamMemberIds: [],
+      startDate: toDateString(new Date()),
+      numberOfWeeks: 52,
+      startIndex: 0,
+      type,
+      deploymentStartsWithT2: false,
+    };
   };
 
-  if (type === "deployment") {
-    return generateDeploymentRotations(generatorOptions);
-  }
+  const dispatcherConfig = getLatestConfig(dispatcherConfigs, "dispatcher");
 
-  return generateDispatcherRotations(generatorOptions);
+  const deploymentConfig = getLatestConfig(deploymentConfigs, "deployment");
+
+  /*
+   * Dispatcher
+   */
+
+  const dispatcherRotations = generateVersionedRotations(dispatcherConfigs);
+
+  /*
+   * Reguläre Deployments
+   *
+   * Die Grundrotation enthält bereits:
+   *
+   * T2 Team
+   * → Code Busters
+   * → T2 Team
+   * → Code Busters
+   * ...
+   *
+   * Innerhalb der Code Busters wird die Personenrotation
+   * nur bei einem Code-Busters-Slot weitergeschaltet.
+   */
+
+  const regularDeploymentRotations =
+    generateVersionedRotations(deploymentConfigs);
+
+  /*
+   * Verschobene Deployments.
+   *
+   * Eine Verschiebung verändert ausschließlich das Datum.
+   * Der zugrunde liegende Slot bleibt derselbe.
+   *
+   * Beispiel:
+   *
+   * 24.09. T2
+   * wird auf 22.09. verschoben
+   *
+   * Danach bleibt:
+   *
+   * 08.10. Stefan
+   * 22.10. T2
+   * 05.11. Shpetim
+   */
+
+  const rescheduledByOriginalDate = new Map(
+    deploymentExceptions
+      .filter(
+        (exception) =>
+          exception.type === "rescheduled" && exception.originalDate,
+      )
+      .map((exception) => [exception.originalDate as string, exception]),
+  );
+
+  const adjustedDeploymentRotations: RotationAssignment[] =
+    regularDeploymentRotations.map((rotation) => {
+      const exception = rescheduledByOriginalDate.get(rotation.startDate);
+
+      if (!exception) {
+        return {
+          ...rotation,
+          deploymentKind: "regular",
+        };
+      }
+
+      return {
+        ...rotation,
+
+        id: `deployment-rescheduled-${exception.id}`,
+
+        /*
+         * Ohne manuelle Überschreibung bleibt die reguläre
+         * Zuständigkeit bestehen.
+         *
+         * Das kann auch T2 Team sein.
+         */
+        teamMemberId: exception.teamMemberId ?? rotation.teamMemberId,
+
+        startDate: exception.deploymentDate,
+
+        endDate: exception.deploymentDate,
+
+        deploymentKind: "rescheduled",
+
+        originalDate: rotation.startDate,
+
+        reason: exception.reason ?? undefined,
+      };
+    });
+
+  /*
+   * Sonderdeployments.
+   *
+   * Diese werden zusätzlich zur normalen Rotation
+   * eingetragen und verändern den Rhythmus nicht.
+   */
+
+  const specialDeployments: RotationAssignment[] = deploymentExceptions
+    .filter(
+      (exception) => exception.type === "special" && exception.teamMemberId,
+    )
+    .map((exception) => ({
+      id: `deployment-special-${exception.id}`,
+
+      teamMemberId: exception.teamMemberId as string,
+
+      startDate: exception.deploymentDate,
+
+      endDate: exception.deploymentDate,
+
+      type: "deployment",
+
+      deploymentKind: "special",
+
+      reason: exception.reason ?? undefined,
+    }));
+
+  const deploymentRotations = [
+    ...adjustedDeploymentRotations,
+    ...specialDeployments,
+  ].sort((first, second) => first.startDate.localeCompare(second.startDate));
+
+  return {
+    teamMembers,
+
+    absences,
+
+    substitutions,
+
+    dispatcherConfig,
+
+    deploymentConfig,
+
+    dispatcherConfigs,
+
+    deploymentConfigs,
+
+    dispatcherRotations,
+
+    deploymentRotations,
+
+    deploymentExceptions,
+  };
 };
