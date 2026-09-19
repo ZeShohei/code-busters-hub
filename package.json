@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run prisma:generate && next build",
     "start": "next start",
     "lint": "eslint",
     "type-check": "next typegen && tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "postinstall": "prisma skills sync || exit 0"
+    "prisma:generate": "prisma generate --config prisma7.config.ts",
+    "postinstall": "npm run prisma:generate"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
