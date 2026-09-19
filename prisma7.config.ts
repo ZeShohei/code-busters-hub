@@ -21,17 +21,6 @@ export default defineConfig({
   },
 
   datasource: {
-    /*
-     * `prisma generate` benötigt keine echte
-     * Datenbankverbindung.
-     *
-     * Auf Vercel kann der Client dadurch bereits
-     * während `npm install` generiert werden, auch
-     * wenn DATABASE_URL dort noch nicht verfügbar ist.
-     *
-     * Für alle anderen Prisma-Befehle wird oben
-     * weiterhin eine echte DATABASE_URL verlangt.
-     */
     url:
       databaseUrl ??
       "postgresql://placeholder:placeholder@localhost:5432/placeholder",
