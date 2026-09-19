@@ -1,4 +1,4 @@
-# Code Busters Hub
+# Code Busters Hub – Agent Guidelines
 
 ## Purpose
 
